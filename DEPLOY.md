@@ -25,12 +25,14 @@ Render despliega leyendo el código desde un repositorio de GitHub.
    - **Plan:** el que tenga **Persistent Disk** (disco persistente) — es el
      que evita que se borre el stock. Es el que vamos a pagar (unos
      USD 5-7/mes).
-4. Agregá un **Disk** (en la sección "Disks" del servicio):
-   - Mount path: `/opt/render/project/src`
-   - Esto hace que `stock.db` sobreviva a los reinicios.
+4. Agregá un **Disk**:
+   - Mount path: `/var/data`
+   - Size: `1 GB` alcanza de sobra (el stock ocupa muy poco).
 5. En "Environment", agregá las variables:
    - `STOCK_USER` = el usuario que quieras
    - `STOCK_PASSWORD` = una clave segura (no dejes la de prueba `admin1234`)
+   - `STOCK_DB_PATH` = `/var/data/stock.db` (asi la base se guarda en el
+     disco persistente, no en el codigo)
 6. Deploy. Render te va a dar una URL fija tipo
    `https://tu-stock.onrender.com` — esa es la que compartís con tus
    empleados.

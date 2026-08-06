@@ -10,7 +10,7 @@ from pathlib import Path
 from flask import Flask, Response, g, jsonify, render_template, request
 from openpyxl import load_workbook
 
-DB_PATH = Path(__file__).parent / "stock.db"
+DB_PATH = Path(os.environ.get("STOCK_DB_PATH", Path(__file__).parent / "stock.db"))
 
 STOCK_USER = os.environ.get("STOCK_USER", "admin")
 STOCK_PASSWORD = os.environ.get("STOCK_PASSWORD", "admin1234")
