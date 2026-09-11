@@ -1,0 +1,53 @@
+{% extends "_base.html" %}
+{% block title %}Comprobante {{ sale.number }}{% endblock %}
+{% block nav %}{% endblock %}
+{% block body_class %}comprobante-body{% endblock %}
+{% block content %}
+<main class="comprobante">
+  <div class="comprobante-brand">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M13 3 L6 13 H11 L10 21 L18 10 H13 L13 3 Z" fill="currentColor"/></svg>
+    Tengo Stock
+  </div>
+
+  <div class="comprobante-header">
+    <h1>Comprobante Interno</h1>
+    <div class="comprobante-number">N&deg; {{ sale.number }}</div>
+  </div>
+
+  <div class="comprobante-meta">
+    <div><strong>Fecha:</strong> {{ sale.created_at|datetime }}</div>
+    <div><strong>Canal:</strong> {{ sale.channel_name }}</div>
+    <div><strong>Cliente:</strong> {{ sale.customer_name or "Sin cliente" }}</div>
+    <div><strong>Forma de pago:</strong> {{ sale.payment_method or "-" }}</div>
+  </div>
+
+  <table class="cart-table">
+    <thead>
+      <tr><th>Producto</th><th>SKU</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.product_name }}</td>
+        <td>{{ item.sku }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.unit_price|money }}</td>
+        <td>{{ item.line_total|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div>Subtotal: {{ sale.subtotal|money }}</div>
+    <div>Descuento: {{ sale.discount|money }}</div>
+    <div><strong>Total: {{ sale.total|money }}</strong></div>
+  </div>
+
+  {% if sale.note %}<div class="comprobante-note">Nota: {{ sale.note }}</div>{% endif %}
+
+  <div class="comprobante-footer">Documento interno, sin validez fiscal.</div>
+
+  <button class="btn-primary no-print" onclick="window.print()">Imprimir</button>
+</main>
+{% endblock %}

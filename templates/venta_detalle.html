@@ -1,0 +1,16 @@
+{% extends "_base.html" %}
+{% block title %}Venta{% endblock %}
+{% block content %}
+<header>
+  <h1 id="page-title">Venta</h1>
+</header>
+
+<main>
+  <section id="detail"></section>
+</main>
+
+<script>window.SALE_ID = {{ sale_id }};</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='venta_detalle.js') }}"></script>
+{% endblock %}

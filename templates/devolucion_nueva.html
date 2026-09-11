@@ -1,0 +1,45 @@
+{% extends "_base.html" %}
+{% block title %}Nueva devolucion{% endblock %}
+{% block content %}
+<header>
+  <h1>Nueva devolucion</h1>
+</header>
+
+<main>
+  <section id="sale-picker">
+    <label>Buscar venta (por cliente o canal)
+      <input id="sale-search" type="search" placeholder="Buscar...">
+    </label>
+    <div id="sale-results"></div>
+  </section>
+
+  <section id="return-form-section" class="hidden">
+    <div id="selected-sale-info" class="card"></div>
+
+    <table class="cart-table">
+      <thead><tr><th>Producto</th><th>Vendida</th><th>Ya devuelta</th><th>A devolver</th></tr></thead>
+      <tbody id="return-items-body"></tbody>
+    </table>
+
+    <form id="return-form">
+      <label>Motivo
+        <select id="f-reason">
+          <option value="no_funciona">No funciona</option>
+          <option value="arrepentimiento">Arrepentimiento</option>
+          <option value="cambio">Cambio</option>
+          <option value="error_de_carga">Error de carga</option>
+          <option value="otro">Otro</option>
+        </select>
+      </label>
+      <label>Nota
+        <textarea id="f-note" rows="2"></textarea>
+      </label>
+      <div id="form-error" class="error hidden"></div>
+      <button type="submit" class="btn-primary">Registrar devolucion</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='devolucion_nueva.js') }}"></script>
+{% endblock %}

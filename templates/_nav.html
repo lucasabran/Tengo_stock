@@ -1,0 +1,15 @@
+<nav class="topnav">
+  <a href="/" class="topnav-brand">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M13 3 L6 13 H11 L10 21 L18 10 H13 L13 3 Z" fill="currentColor"/></svg>
+    Tengo Stock
+  </a>
+  <div class="topnav-links">
+    <a href="/" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="/stock" class="{% if active == 'stock' %}active{% endif %}">Stock</a>
+    <a href="/movimientos" class="{% if active == 'movimientos' %}active{% endif %}">Movimientos</a>
+    <a href="/ventas" class="{% if active == 'ventas' %}active{% endif %}">Ventas</a>
+    <a href="/devoluciones" class="{% if active == 'devoluciones' %}active{% endif %}">Devoluciones</a>
+    <a href="/gastos" class="{% if active == 'gastos' %}active{% endif %}">Gastos</a>
+    <a href="/clientes" class="{% if active == 'clientes' %}active{% endif %}">Clientes</a>
+  </div>
+</nav>
