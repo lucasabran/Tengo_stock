@@ -1,0 +1,14 @@
+{% extends "_base.html" %}
+{% block title %}Cuentas corrientes{% endblock %}
+{% block content %}
+<header>
+  <h1>Cuentas corrientes</h1>
+</header>
+
+<main>
+  <section id="list"></section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='cuentas.js') }}"></script>
+{% endblock %}

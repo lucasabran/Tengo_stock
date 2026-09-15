@@ -31,17 +31,17 @@
         <td>{{ item.product_name }}</td>
         <td>{{ item.sku }}</td>
         <td>{{ item.quantity }}</td>
-        <td>{{ item.unit_price|money }}</td>
-        <td>{{ item.line_total|money }}</td>
+        <td>{{ item.unit_price|money(sale.currency) }}</td>
+        <td>{{ item.line_total|money(sale.currency) }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
   <div class="totals">
-    <div>Subtotal: {{ sale.subtotal|money }}</div>
-    <div>Descuento: {{ sale.discount|money }}</div>
-    <div><strong>Total: {{ sale.total|money }}</strong></div>
+    <div>Subtotal: {{ sale.subtotal|money(sale.currency) }}</div>
+    <div>Descuento: {{ sale.discount|money(sale.currency) }}</div>
+    <div><strong>Total: {{ sale.total|money(sale.currency) }}</strong></div>
   </div>
 
   {% if sale.note %}<div class="comprobante-note">Nota: {{ sale.note }}</div>{% endif %}

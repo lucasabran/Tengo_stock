@@ -156,8 +156,23 @@ def init_db():
         """
     )
 
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS account_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL REFERENCES customers(id),
+            amount REAL NOT NULL,
+            payment_method TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
     _ensure_column(db, "products", "category", "category TEXT DEFAULT ''")
     _ensure_column(db, "stock_movements", "note", "note TEXT DEFAULT ''")
+    _ensure_column(db, "sales", "currency", "currency TEXT DEFAULT 'ARS'")
+    _ensure_column(db, "account_payments", "currency", "currency TEXT DEFAULT 'ARS'")
 
     db.execute(
         "INSERT OR IGNORE INTO channels (name, type, active, created_at) VALUES (?, ?, 1, ?)",

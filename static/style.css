@@ -393,7 +393,8 @@ dialog form textarea {
 
 .list-row-title { font-weight: 600; }
 .list-row-sub { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
-.list-row-amount { font-weight: 600; white-space: nowrap; }
+.list-row-amount { font-weight: 600; white-space: nowrap; text-align: right; }
+.list-row-amount + .list-row-amount { margin-top: 0.2rem; }
 .movement-positive { color: var(--success); }
 .movement-negative { color: var(--danger); }
 

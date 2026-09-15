@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Flask, Response, request
 
 from db import close_db, init_db
-from blueprints import channels, customers, dashboard, expenses, movements, products, returns, sales
+from blueprints import accounts, channels, customers, dashboard, expenses, movements, products, returns, sales
 
 STOCK_USER = os.environ.get("STOCK_USER", "admin")
 STOCK_PASSWORD = os.environ.get("STOCK_PASSWORD", "admin1234")
@@ -15,9 +15,10 @@ app.teardown_appcontext(close_db)
 
 
 @app.template_filter("money")
-def format_money(value):
+def format_money(value, currency="ARS"):
     formatted = format(value or 0, ",.2f").replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"$ {formatted}"
+    symbol = "US$" if currency == "USD" else "$"
+    return f"{symbol} {formatted}"
 
 
 @app.template_filter("datetime")
@@ -36,6 +37,7 @@ app.register_blueprint(sales.bp)
 app.register_blueprint(returns.bp)
 app.register_blueprint(expenses.bp)
 app.register_blueprint(movements.bp)
+app.register_blueprint(accounts.bp)
 
 
 @app.before_request

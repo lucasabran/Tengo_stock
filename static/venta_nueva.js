@@ -16,6 +16,7 @@ const cartBody = document.getElementById("cart-body");
 const cartEmpty = document.getElementById("cart-empty");
 
 const discountInput = document.getElementById("f-discount");
+const currencySelect = document.getElementById("f-currency");
 const totalSubtotalEl = document.getElementById("total-subtotal");
 const totalTotalEl = document.getElementById("total-total");
 
@@ -155,7 +156,7 @@ function renderCart() {
       <td>${escapeHtml(item.name)}<div class="card-sku">SKU: ${escapeHtml(item.sku)}</div></td>
       <td><input type="number" min="1" max="${item.maxStock}" value="${item.quantity}" class="qty-input" data-idx="${idx}"></td>
       <td><input type="number" min="0" step="0.01" value="${item.price}" class="price-input" data-idx="${idx}"></td>
-      <td class="line-total">${money(item.price * item.quantity)}</td>
+      <td class="line-total">${money(item.price * item.quantity, currencySelect.value)}</td>
       <td><button type="button" class="remove-item" data-idx="${idx}">x</button></td>
     `;
     cartBody.appendChild(tr);
@@ -174,7 +175,7 @@ function renderCart() {
       cart[idx].price = Math.max(0, Number(input.value) || 0);
       renderTotals();
       const totalCell = cartBody.rows[idx].querySelector(".line-total");
-      if (totalCell) totalCell.textContent = money(cart[idx].price * cart[idx].quantity);
+      if (totalCell) totalCell.textContent = money(cart[idx].price * cart[idx].quantity, currencySelect.value);
     });
   });
   cartBody.querySelectorAll(".remove-item").forEach((btn) => {
@@ -190,11 +191,12 @@ function renderCart() {
 function renderTotals() {
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const discount = Number(discountInput.value) || 0;
-  totalSubtotalEl.textContent = money(subtotal);
-  totalTotalEl.textContent = money(Math.max(0, subtotal - discount));
+  totalSubtotalEl.textContent = money(subtotal, currencySelect.value);
+  totalTotalEl.textContent = money(Math.max(0, subtotal - discount), currencySelect.value);
 }
 
 discountInput.addEventListener("input", renderTotals);
+currencySelect.addEventListener("change", renderCart);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -206,11 +208,19 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  const paymentMethod = document.getElementById("f-payment").value;
+  if (paymentMethod === "Cuenta corriente" && !customerSelect.value) {
+    formError.textContent = "Para vender a cuenta corriente hay que elegir un cliente.";
+    formError.classList.remove("hidden");
+    return;
+  }
+
   const payload = {
     channel_id: Number(channelSelect.value),
     customer_id: customerSelect.value || null,
     discount: Number(discountInput.value) || 0,
-    payment_method: document.getElementById("f-payment").value,
+    payment_method: paymentMethod,
+    currency: currencySelect.value,
     note: document.getElementById("f-note").value.trim(),
     items: cart.map((i) => ({ sku: i.sku, quantity: i.quantity, unit_price: i.price })),
   };

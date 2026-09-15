@@ -1,7 +1,7 @@
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 from db import get_db, now_iso
-from helpers import build_csv
+from helpers import ACCOUNT_PAYMENT_METHOD, build_csv
 
 bp = Blueprint("sales", __name__)
 
@@ -19,6 +19,7 @@ def sale_summary_dict(row):
         "discount": row["discount"],
         "total": row["total"],
         "payment_method": row["payment_method"],
+        "currency": row["currency"] or "ARS",
         "note": row["note"],
         "created_at": row["created_at"],
     }
@@ -105,7 +106,7 @@ def export_sales():
 
     rows = db.execute(query, params).fetchall()
     content = build_csv(
-        ["numero", "fecha", "canal", "cliente", "forma_pago", "subtotal", "descuento", "total", "nota"],
+        ["numero", "fecha", "canal", "cliente", "forma_pago", "moneda", "subtotal", "descuento", "total", "nota"],
         [
             [
                 f"V-{r['id']:06d}",
@@ -113,6 +114,7 @@ def export_sales():
                 r["channel_name"],
                 r["customer_name"] or "",
                 r["payment_method"] or "",
+                r["currency"] or "ARS",
                 r["subtotal"],
                 r["discount"],
                 r["total"],
@@ -184,6 +186,9 @@ def create_sale():
 
     payment_method = str(data.get("payment_method", "")).strip()
     note = str(data.get("note", "")).strip()
+    currency = str(data.get("currency", "ARS")).strip().upper()
+    if currency not in ("ARS", "USD"):
+        currency = "ARS"
 
     db = get_db()
 
@@ -194,6 +199,9 @@ def create_sale():
         customer = db.execute("SELECT 1 FROM customers WHERE id = ?", (customer_id,)).fetchone()
         if not customer:
             return jsonify({"error": "cliente invalido"}), 400
+
+    if payment_method == ACCOUNT_PAYMENT_METHOD and customer_id is None:
+        return jsonify({"error": "para vender a cuenta corriente hay que elegir un cliente"}), 400
 
     # Pre-check: read-only pass, collect every problem before writing anything
     lines = []
@@ -247,8 +255,8 @@ def create_sale():
 
         cur = db.execute(
             "INSERT INTO sales (channel_id, customer_id, status, subtotal, discount, total, "
-            "payment_method, note, created_at) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?)",
-            (channel_id, customer_id, subtotal, discount, total, payment_method, note, now),
+            "payment_method, currency, note, created_at) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?)",
+            (channel_id, customer_id, subtotal, discount, total, payment_method, currency, note, now),
         )
         sale_id = cur.lastrowid
 

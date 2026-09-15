@@ -18,8 +18,8 @@ async function load() {
         <tr>
           <td>${escapeHtml(i.product_name)}<div class="card-sku">SKU: ${escapeHtml(i.sku)}</div></td>
           <td>${i.quantity}</td>
-          <td>${money(i.unit_price)}</td>
-          <td>${money(i.line_total)}</td>
+          <td>${money(i.unit_price, sale.currency)}</td>
+          <td>${money(i.line_total, sale.currency)}</td>
           <td>${i.already_returned > 0 ? `${i.already_returned} devuelta(s)` : ""}</td>
         </tr>
       `
@@ -33,10 +33,10 @@ async function load() {
           <div class="card-name">${escapeHtml(sale.channel_name)}</div>
           <div class="card-sku">${escapeHtml(sale.customer_name || "Sin cliente")} &middot; ${formatDateTime(sale.created_at)}</div>
         </div>
-        <div class="card-price">${money(sale.total)}</div>
+        <div class="card-price">${money(sale.total, sale.currency)}</div>
       </div>
       ${sale.note ? `<div class="card-desc">${escapeHtml(sale.note)}</div>` : ""}
-      <div class="card-desc">Forma de pago: ${escapeHtml(sale.payment_method || "-")}</div>
+      <div class="card-desc">Forma de pago: ${escapeHtml(sale.payment_method || "-")} &middot; Moneda: ${sale.currency === "USD" ? "Dolares" : "Pesos"}</div>
     </div>
 
     <table class="cart-table">
@@ -45,9 +45,9 @@ async function load() {
     </table>
 
     <div class="totals">
-      <div>Subtotal: ${money(sale.subtotal)}</div>
-      <div>Descuento: ${money(sale.discount)}</div>
-      <div>Total: ${money(sale.total)}</div>
+      <div>Subtotal: ${money(sale.subtotal, sale.currency)}</div>
+      <div>Descuento: ${money(sale.discount, sale.currency)}</div>
+      <div>Total: ${money(sale.total, sale.currency)}</div>
     </div>
 
     <div class="card-actions detail-actions">

@@ -4,6 +4,8 @@ import unicodedata
 
 from openpyxl import load_workbook
 
+ACCOUNT_PAYMENT_METHOD = "Cuenta corriente"
+
 HEADER_MAP = {
     "sku": "sku",
     "codigo": "sku",

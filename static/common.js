@@ -1,5 +1,5 @@
-function money(n) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(n || 0);
+function money(n, currency = "ARS") {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: currency === "USD" ? "USD" : "ARS" }).format(n || 0);
 }
 
 function escapeHtml(str) {

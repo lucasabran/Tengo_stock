@@ -21,13 +21,16 @@ def summary():
     today = today_date.isoformat()
     month = today[:7]
 
+    # Solo se suman las ventas en pesos: mezclar ARS y USD en un mismo total no tendria sentido.
     sales_today = db.execute(
-        "SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s FROM sales WHERE created_at LIKE ?",
+        "SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s FROM sales "
+        "WHERE created_at LIKE ? AND (currency IS NULL OR currency = 'ARS')",
         (f"{today}%",),
     ).fetchone()
 
     sales_month = db.execute(
-        "SELECT COALESCE(SUM(total), 0) AS s FROM sales WHERE created_at LIKE ?",
+        "SELECT COALESCE(SUM(total), 0) AS s FROM sales "
+        "WHERE created_at LIKE ? AND (currency IS NULL OR currency = 'ARS')",
         (f"{month}%",),
     ).fetchone()
 
@@ -43,7 +46,7 @@ def summary():
 
     recent = db.execute(
         """
-        SELECT sales.id, sales.total, sales.created_at, channels.name AS channel_name,
+        SELECT sales.id, sales.total, sales.currency, sales.created_at, channels.name AS channel_name,
                customers.name AS customer_name
         FROM sales
         JOIN channels ON channels.id = sales.channel_id
@@ -69,7 +72,7 @@ def summary():
     week_ago = (today_date - timedelta(days=6)).isoformat()
     sales_by_day = db.execute(
         "SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(total), 0) AS total "
-        "FROM sales WHERE created_at >= ? GROUP BY day",
+        "FROM sales WHERE created_at >= ? AND (currency IS NULL OR currency = 'ARS') GROUP BY day",
         (week_ago,),
     ).fetchall()
     totals_by_day = {r["day"]: r["total"] for r in sales_by_day}
@@ -104,6 +107,7 @@ def summary():
                     "id": r["id"],
                     "number": f"V-{r['id']:06d}",
                     "total": r["total"],
+                    "currency": r["currency"] or "ARS",
                     "created_at": r["created_at"],
                     "channel_name": r["channel_name"],
                     "customer_name": r["customer_name"],

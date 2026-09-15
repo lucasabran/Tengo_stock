@@ -30,7 +30,7 @@ function render(sales) {
         <div class="list-row-title">${escapeHtml(s.number)} &middot; ${escapeHtml(s.channel_name)}</div>
         <div class="list-row-sub">${escapeHtml(s.customer_name || "Sin cliente")} &middot; ${formatDateTime(s.created_at)}</div>
       </div>
-      <div class="list-row-amount">${money(s.total)}</div>
+      <div class="list-row-amount">${money(s.total, s.currency)}</div>
     `;
     listEl.appendChild(row);
   }

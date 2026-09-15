@@ -1,0 +1,59 @@
+{% extends "_base.html" %}
+{% block title %}Cuenta corriente{% endblock %}
+{% block content %}
+<header>
+  <h1 id="page-title">Cuenta corriente</h1>
+</header>
+
+<main>
+  <section id="summary"></section>
+
+  <div class="card-actions detail-actions">
+    <button id="btn-new-payment" class="btn-secondary" type="button">Registrar pago</button>
+  </div>
+
+  <h2 class="section-title">Movimientos</h2>
+  <table class="cart-table">
+    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th></tr></thead>
+    <tbody id="ledger-body"></tbody>
+  </table>
+  <div id="ledger-empty" class="empty hidden">Todavia no hay movimientos.</div>
+</main>
+
+<dialog id="payment-dialog">
+  <form id="payment-form">
+    <h2>Registrar pago</h2>
+    <label>Monto
+      <input name="amount" id="p-amount" type="number" step="0.01" min="0.01" required>
+    </label>
+    <label>Moneda
+      <select id="p-currency">
+        <option value="ARS">Pesos ($)</option>
+        <option value="USD">Dolares (US$)</option>
+      </select>
+    </label>
+    <label>Forma de pago
+      <select id="p-method">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia</option>
+        <option value="Tarjeta">Tarjeta</option>
+        <option value="Mercado Pago">Mercado Pago</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </label>
+    <label>Nota
+      <textarea id="p-note" rows="2"></textarea>
+    </label>
+    <div id="payment-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="payment-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>window.CUSTOMER_ID = {{ customer_id }};</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='cuenta_detalle.js') }}"></script>
+{% endblock %}
