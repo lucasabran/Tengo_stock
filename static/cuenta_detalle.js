@@ -17,7 +17,7 @@ function balanceCard(label, stats, currency) {
       <div class="card-top">
         <div>
           <div class="card-name">${label}</div>
-          <div class="card-sku">Vendido a cuenta: ${money(stats.charged, currency)} &middot; Pagado: ${money(stats.paid, currency)}</div>
+          <div class="card-sku">Cargado: ${money(stats.charged, currency)} &middot; Pagado: ${money(stats.paid, currency)}</div>
         </div>
         <div class="card-price ${cls}">${money(stats.balance, currency)}</div>
       </div>
@@ -39,7 +39,7 @@ async function load() {
   summaryEl.innerHTML =
     balanceCard("Cuenta en pesos", account.ars, "ARS") + balanceCard("Cuenta en dolares", account.usd, "USD");
   if (!account.ars.charged && !account.usd.charged) {
-    summaryEl.innerHTML = '<div class="empty">Este cliente todavia no tiene ventas a cuenta corriente.</div>';
+    summaryEl.innerHTML = '<div class="empty">Este cliente todavia no tiene movimientos. Usa "Registrar movimiento" para el primero (por ejemplo, un prestamo o adelanto).</div>';
   }
 
   ledgerBody.innerHTML = "";

@@ -3,9 +3,13 @@
 {% block content %}
 <header>
   <h1>Cuentas corrientes</h1>
+  <p class="header-hint">Buscar cliente para agregar un movimiento (prestamo, adelanto, etc.), aunque todavia no tenga ventas:</p>
+  <input id="search" type="search" placeholder="Buscar cliente por nombre o telefono...">
+  <div id="customer-results" class="product-results hidden"></div>
 </header>
 
 <main>
+  <h2 class="section-title">Cuentas con movimientos</h2>
   <section id="list"></section>
 </main>
 {% endblock %}
