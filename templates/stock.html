@@ -1,0 +1,90 @@
+{% extends "_base.html" %}
+{% block title %}Stock{% endblock %}
+{% block content %}
+<header>
+  <h1>Stock</h1>
+  <input id="search" type="search" placeholder="Buscar por SKU o nombre...">
+  <div class="filters-row">
+    <select id="filter-category"><option value="">Todas las categorias</option></select>
+  </div>
+  <div class="import-row">
+    <button id="btn-import" type="button">Importar stock (Excel/CSV)</button>
+    <a href="/api/products/template.csv">Descargar plantilla</a>
+    <a href="/api/products/export.csv">Exportar stock</a>
+  </div>
+  <input type="file" id="import-file" accept=".csv,.xlsx,.xlsm" class="hidden">
+</header>
+
+<main>
+  <section id="list"></section>
+</main>
+
+<button id="fab-add" title="Agregar producto">+</button>
+
+<dialog id="form-dialog">
+  <form id="product-form">
+    <h2 id="form-title">Nuevo producto</h2>
+    <label>SKU
+      <input name="sku" id="f-sku" required>
+    </label>
+    <label>Nombre
+      <input name="name" id="f-name" required>
+    </label>
+    <label>Categoria
+      <input name="category" id="f-category" list="category-list" autocomplete="off" placeholder="Ej: Celulares">
+      <datalist id="category-list"></datalist>
+    </label>
+    <div class="field-row">
+      <label>Precio
+        <input name="price" id="f-price" type="number" step="0.01" min="0" required>
+      </label>
+      <label>Moneda
+        <select id="f-currency">
+          <option value="ARS">Pesos ($)</option>
+          <option value="USD">Dolares (US$)</option>
+        </select>
+      </label>
+    </div>
+    <label>Cantidad
+      <input name="quantity" id="f-quantity" type="number" step="1" min="0" required>
+    </label>
+    <label>Descripcion
+      <textarea name="description" id="f-description" rows="3"></textarea>
+    </label>
+    <div id="form-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="form-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="stock-entry-dialog">
+  <form id="stock-entry-form">
+    <h2>Cargar stock</h2>
+    <p id="stock-entry-product" class="card-sku"></p>
+    <label>Cantidad
+      <input name="quantity" id="se-quantity" type="number" step="1" min="1" required>
+    </label>
+    <label>Motivo
+      <select name="reason" id="se-reason">
+        <option value="compra_proveedor">Compra a proveedor</option>
+        <option value="ajuste_inventario">Ajuste de inventario</option>
+        <option value="devolucion_proveedor">Devolucion a proveedor</option>
+        <option value="otro">Otro</option>
+      </select>
+    </label>
+    <label>Nota
+      <textarea name="note" id="se-note" rows="2" placeholder="Ej: Factura #123 - Proveedor X"></textarea>
+    </label>
+    <div id="stock-entry-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="stock-entry-cancel">Cancelar</button>
+      <button type="submit">Cargar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}

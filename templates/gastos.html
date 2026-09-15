@@ -1,0 +1,53 @@
+{% extends "_base.html" %}
+{% block title %}Gastos{% endblock %}
+{% block content %}
+<header>
+  <h1>Gastos</h1>
+  <input id="search" type="search" placeholder="Buscar por proveedor o nota...">
+  <div class="filters-row">
+    <a id="export-link" href="/api/expenses/export.csv">Exportar</a>
+  </div>
+</header>
+
+<main>
+  <section id="list"></section>
+</main>
+
+<button id="fab-add" title="Agregar gasto">+</button>
+
+<dialog id="form-dialog">
+  <form id="expense-form">
+    <h2 id="form-title">Nuevo gasto</h2>
+    <label>Categoria
+      <select name="category" id="f-category">
+        <option value="Alquiler">Alquiler</option>
+        <option value="Servicios">Servicios</option>
+        <option value="Sueldos">Sueldos</option>
+        <option value="Mercaderia">Mercaderia</option>
+        <option value="Impuestos">Impuestos</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </label>
+    <label>Monto
+      <input name="amount" id="f-amount" type="number" step="0.01" min="0" required>
+    </label>
+    <label>Fecha
+      <input name="expense_date" id="f-date" type="date" required>
+    </label>
+    <label>Proveedor
+      <input name="vendor" id="f-vendor">
+    </label>
+    <label>Nota
+      <textarea name="note" id="f-note" rows="2"></textarea>
+    </label>
+    <div id="form-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="form-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='gastos.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "_base.html" %}
+{% block title %}Cuenta corriente{% endblock %}
+{% block content %}
+<header>
+  <h1 id="page-title">Cuenta corriente</h1>
+</header>
+
+<main>
+  <section id="summary"></section>
+
+  <div class="card-actions detail-actions">
+    <button id="btn-new-movement" class="btn-secondary" type="button">Registrar movimiento</button>
+  </div>
+
+  <h2 class="section-title">Movimientos</h2>
+  <table class="cart-table">
+    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th></tr></thead>
+    <tbody id="ledger-body"></tbody>
+  </table>
+  <div id="ledger-empty" class="empty hidden">Todavia no hay movimientos.</div>
+</main>
+
+<dialog id="movement-dialog">
+  <form id="movement-form">
+    <h2>Registrar movimiento</h2>
+    <label>Tipo
+      <select id="m-type">
+        <option value="payment">Pago (reduce la deuda)</option>
+        <option value="charge">Cargo (aumenta la deuda)</option>
+      </select>
+    </label>
+    <label>Monto
+      <input name="amount" id="m-amount" type="number" step="0.01" min="0.01" required>
+    </label>
+    <label>Moneda
+      <select id="m-currency">
+        <option value="ARS">Pesos ($)</option>
+        <option value="USD">Dolares (US$)</option>
+      </select>
+    </label>
+    <label>Forma de pago / medio
+      <select id="m-method">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia</option>
+        <option value="Tarjeta">Tarjeta</option>
+        <option value="Mercado Pago">Mercado Pago</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </label>
+    <label>Nota
+      <textarea id="m-note" rows="2" placeholder="Ej: motivo del cargo o detalle del pago"></textarea>
+    </label>
+    <div id="movement-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="movement-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>window.CUSTOMER_ID = {{ customer_id }};</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='cuenta_detalle.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "_base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<header>
+  <h1>Clientes</h1>
+  <input id="search" type="search" placeholder="Buscar por nombre o telefono...">
+</header>
+
+<main>
+  <section id="list"></section>
+</main>
+
+<button id="fab-add" title="Agregar cliente">+</button>
+
+<dialog id="form-dialog">
+  <form id="customer-form">
+    <h2 id="form-title">Nuevo cliente</h2>
+    <label>Nombre
+      <input name="name" id="f-name" required>
+    </label>
+    <label>Telefono
+      <input name="phone" id="f-phone">
+    </label>
+    <label>Email
+      <input name="email" id="f-email" type="email">
+    </label>
+    <label>Documento
+      <input name="doc_number" id="f-doc">
+    </label>
+    <label>Nota
+      <textarea name="note" id="f-note" rows="2"></textarea>
+    </label>
+    <div id="form-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="form-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='clientes.js') }}"></script>
+{% endblock %}

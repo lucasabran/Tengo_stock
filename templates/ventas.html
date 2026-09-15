@@ -1,0 +1,23 @@
+{% extends "_base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<header>
+  <h1>Ventas</h1>
+  <input id="search" type="search" placeholder="Buscar por cliente o canal...">
+  <div class="filters-row">
+    <select id="filter-channel"><option value="">Todos los canales</option></select>
+    <input id="filter-from" type="date" title="Desde">
+    <input id="filter-to" type="date" title="Hasta">
+    <a id="export-link" href="/api/sales/export.csv">Exportar</a>
+  </div>
+</header>
+
+<main>
+  <section id="list"></section>
+</main>
+
+<a id="fab-add" href="/ventas/nueva" title="Nueva venta">+</a>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='ventas.js') }}"></script>
+{% endblock %}

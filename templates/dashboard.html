@@ -1,0 +1,36 @@
+{% extends "_base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<header>
+  <h1>Dashboard</h1>
+</header>
+
+<main>
+  <h2 class="section-title">Pesos</h2>
+  <section class="tiles" id="tiles-ars"></section>
+  <section id="sparkline-ars" class="sparkline-card"></section>
+
+  <div id="usd-section" class="hidden">
+    <h2 class="section-title">Dolares</h2>
+    <section class="tiles" id="tiles-usd"></section>
+    <section id="sparkline-usd" class="sparkline-card"></section>
+  </div>
+
+  <div class="dashboard-columns">
+    <div>
+      <h2 class="section-title">Mas vendidos (30 dias)</h2>
+      <section id="top-products"></section>
+    </div>
+    <div>
+      <h2 class="section-title">Stock bajo</h2>
+      <section id="low-stock"></section>
+    </div>
+  </div>
+
+  <h2 class="section-title">Ultimas ventas</h2>
+  <section id="recent-sales"></section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}
