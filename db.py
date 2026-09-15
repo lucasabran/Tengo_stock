@@ -170,9 +170,11 @@ def init_db():
     )
 
     _ensure_column(db, "products", "category", "category TEXT DEFAULT ''")
+    _ensure_column(db, "products", "currency", "currency TEXT DEFAULT 'ARS'")
     _ensure_column(db, "stock_movements", "note", "note TEXT DEFAULT ''")
     _ensure_column(db, "sales", "currency", "currency TEXT DEFAULT 'ARS'")
     _ensure_column(db, "account_payments", "currency", "currency TEXT DEFAULT 'ARS'")
+    _ensure_column(db, "account_payments", "type", "type TEXT DEFAULT 'payment'")
 
     db.execute(
         "INSERT OR IGNORE INTO channels (name, type, active, created_at) VALUES (?, ?, 1, ?)",

@@ -17,6 +17,7 @@ const fName = document.getElementById("f-name");
 const fCategory = document.getElementById("f-category");
 const categoryList = document.getElementById("category-list");
 const fPrice = document.getElementById("f-price");
+const fCurrency = document.getElementById("f-currency");
 const fQuantity = document.getElementById("f-quantity");
 const fDescription = document.getElementById("f-description");
 
@@ -73,7 +74,7 @@ function render(products) {
           <div class="card-name">${escapeHtml(p.name)}</div>
           <div class="card-sku">SKU: ${escapeHtml(p.sku)}${p.category ? ` &middot; ${escapeHtml(p.category)}` : ""}</div>
         </div>
-        <div class="card-price">${money(p.price)}</div>
+        <div class="card-price">${money(p.price, p.currency)}</div>
       </div>
       ${p.description ? `<div class="card-desc">${escapeHtml(p.description)}</div>` : ""}
       <div class="card-bottom">
@@ -114,6 +115,7 @@ function openCreate() {
   form.reset();
   fSku.disabled = false;
   fCategory.value = "General";
+  fCurrency.value = "ARS";
   hideError();
   dialog.showModal();
 }
@@ -125,6 +127,7 @@ function openEdit(p) {
   fSku.disabled = true;
   fName.value = p.name;
   fCategory.value = p.category || "";
+  fCurrency.value = p.currency || "ARS";
   fPrice.value = p.price;
   fQuantity.value = p.quantity;
   fDescription.value = p.description || "";
@@ -150,6 +153,7 @@ form.addEventListener("submit", async (e) => {
     sku: fSku.value.trim(),
     name: fName.value.trim(),
     category: fCategory.value.trim(),
+    currency: fCurrency.value,
     price: parseFloat(fPrice.value),
     quantity: parseInt(fQuantity.value, 10),
     description: fDescription.value.trim(),

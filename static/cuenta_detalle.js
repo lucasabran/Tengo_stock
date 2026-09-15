@@ -3,11 +3,11 @@ const summaryEl = document.getElementById("summary");
 const ledgerBody = document.getElementById("ledger-body");
 const ledgerEmpty = document.getElementById("ledger-empty");
 
-const btnNewPayment = document.getElementById("btn-new-payment");
-const paymentDialog = document.getElementById("payment-dialog");
-const paymentForm = document.getElementById("payment-form");
-const paymentError = document.getElementById("payment-error");
-const paymentCancel = document.getElementById("payment-cancel");
+const btnNewMovement = document.getElementById("btn-new-movement");
+const movementDialog = document.getElementById("movement-dialog");
+const movementForm = document.getElementById("movement-form");
+const movementError = document.getElementById("movement-error");
+const movementCancel = document.getElementById("movement-cancel");
 
 function balanceCard(label, stats, currency) {
   if (!stats.charged) return "";
@@ -60,34 +60,35 @@ async function load() {
   }
 }
 
-btnNewPayment.addEventListener("click", () => {
-  paymentForm.reset();
-  paymentError.classList.add("hidden");
-  paymentDialog.showModal();
+btnNewMovement.addEventListener("click", () => {
+  movementForm.reset();
+  movementError.classList.add("hidden");
+  movementDialog.showModal();
 });
-paymentCancel.addEventListener("click", () => paymentDialog.close());
+movementCancel.addEventListener("click", () => movementDialog.close());
 
-paymentForm.addEventListener("submit", async (e) => {
+movementForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  paymentError.classList.add("hidden");
+  movementError.classList.add("hidden");
   try {
-    await fetchJSON(`/api/accounts/${window.CUSTOMER_ID}/payments`, {
+    await fetchJSON(`/api/accounts/${window.CUSTOMER_ID}/movements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: parseFloat(document.getElementById("p-amount").value),
-        currency: document.getElementById("p-currency").value,
-        payment_method: document.getElementById("p-method").value,
-        note: document.getElementById("p-note").value.trim(),
+        type: document.getElementById("m-type").value,
+        amount: parseFloat(document.getElementById("m-amount").value),
+        currency: document.getElementById("m-currency").value,
+        payment_method: document.getElementById("m-method").value,
+        note: document.getElementById("m-note").value.trim(),
       }),
     });
   } catch (err) {
-    paymentError.textContent = errorMessage(err);
-    paymentError.classList.remove("hidden");
+    movementError.textContent = errorMessage(err);
+    movementError.classList.remove("hidden");
     return;
   }
-  paymentDialog.close();
-  toast("Pago registrado", "success");
+  movementDialog.close();
+  toast("Movimiento registrado", "success");
   load();
 });
 

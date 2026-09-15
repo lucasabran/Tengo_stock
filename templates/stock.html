@@ -34,9 +34,17 @@
       <input name="category" id="f-category" list="category-list" autocomplete="off" placeholder="Ej: Celulares">
       <datalist id="category-list"></datalist>
     </label>
-    <label>Precio
-      <input name="price" id="f-price" type="number" step="0.01" min="0" required>
-    </label>
+    <div class="field-row">
+      <label>Precio
+        <input name="price" id="f-price" type="number" step="0.01" min="0" required>
+      </label>
+      <label>Moneda
+        <select id="f-currency">
+          <option value="ARS">Pesos ($)</option>
+          <option value="USD">Dolares (US$)</option>
+        </select>
+      </label>
+    </div>
     <label>Cantidad
       <input name="quantity" id="f-quantity" type="number" step="1" min="0" required>
     </label>

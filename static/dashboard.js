@@ -1,6 +1,9 @@
-const tilesEl = document.getElementById("tiles");
+const tilesArsEl = document.getElementById("tiles-ars");
+const tilesUsdEl = document.getElementById("tiles-usd");
+const usdSection = document.getElementById("usd-section");
 const recentEl = document.getElementById("recent-sales");
-const sparklineEl = document.getElementById("sparkline");
+const sparklineArsEl = document.getElementById("sparkline-ars");
+const sparklineUsdEl = document.getElementById("sparkline-usd");
 const topProductsEl = document.getElementById("top-products");
 const lowStockEl = document.getElementById("low-stock");
 
@@ -18,7 +21,7 @@ function tile(label, value, opts = {}) {
   return div;
 }
 
-function renderSparkline(days) {
+function renderSparkline(container, days, currency) {
   const max = Math.max(1, ...days.map((d) => d.total));
   const width = 700;
   const height = 120;
@@ -33,14 +36,14 @@ function renderSparkline(days) {
       const label = new Date(d.date + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short" });
       return `
         <g>
-          <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="var(--accent)"></rect>
+          <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${currency === "USD" ? "var(--success)" : "var(--accent)"}"></rect>
           <text x="${x + barWidth / 2}" y="${height + 16}" text-anchor="middle" class="sparkline-label">${label}</text>
         </g>
       `;
     })
     .join("");
 
-  sparklineEl.innerHTML = `
+  container.innerHTML = `
     <svg viewBox="0 0 ${width} ${height + 24}" preserveAspectRatio="xMidYMid meet" class="sparkline-svg">${bars}</svg>
   `;
 }
@@ -90,18 +93,30 @@ async function load() {
   try {
     data = await fetchJSON("/api/dashboard/summary");
   } catch (err) {
-    tilesEl.innerHTML = `<div class="empty">${escapeHtml(errorMessage(err))}</div>`;
+    tilesArsEl.innerHTML = `<div class="empty">${escapeHtml(errorMessage(err))}</div>`;
     return;
   }
 
-  tilesEl.innerHTML = "";
-  tilesEl.appendChild(tile("Ventas de hoy", `${money(data.sales_today_total)} <span class="tile-sub">(${data.sales_today_count})</span>`));
-  tilesEl.appendChild(tile("Ventas del mes", money(data.sales_month_total)));
-  tilesEl.appendChild(tile("Gastos del mes", money(data.expenses_month_total)));
-  tilesEl.appendChild(tile("Balance del mes", money(data.balance_month), { warn: data.balance_month < 0 }));
-  tilesEl.appendChild(tile("Stock bajo", data.low_stock_count, { warn: data.low_stock_count > 0, href: "/stock" }));
+  const ars = data.ars;
+  tilesArsEl.innerHTML = "";
+  tilesArsEl.appendChild(tile("Ventas de hoy", `${money(ars.sales_today_total)} <span class="tile-sub">(${ars.sales_today_count})</span>`));
+  tilesArsEl.appendChild(tile("Ventas del mes", money(ars.sales_month_total)));
+  tilesArsEl.appendChild(tile("Gastos del mes", money(ars.expenses_month_total)));
+  tilesArsEl.appendChild(tile("Balance del mes", money(ars.balance_month), { warn: ars.balance_month < 0 }));
+  tilesArsEl.appendChild(tile("Stock bajo", data.low_stock_count, { warn: data.low_stock_count > 0, href: "/stock" }));
+  renderSparkline(sparklineArsEl, ars.sales_last_7_days, "ARS");
 
-  renderSparkline(data.sales_last_7_days);
+  const usd = data.usd;
+  const hasUsdActivity =
+    usd.sales_today_total > 0 || usd.sales_month_total > 0 || usd.sales_last_7_days.some((d) => d.total > 0);
+  usdSection.classList.toggle("hidden", !hasUsdActivity);
+  if (hasUsdActivity) {
+    tilesUsdEl.innerHTML = "";
+    tilesUsdEl.appendChild(tile("Ventas de hoy", `${money(usd.sales_today_total, "USD")} <span class="tile-sub">(${usd.sales_today_count})</span>`));
+    tilesUsdEl.appendChild(tile("Ventas del mes", money(usd.sales_month_total, "USD")));
+    renderSparkline(sparklineUsdEl, usd.sales_last_7_days, "USD");
+  }
+
   renderTopProducts(data.top_products);
   renderLowStock(data.low_stock_products);
 

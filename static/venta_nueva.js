@@ -124,7 +124,7 @@ function renderResults(products) {
     row.className = "product-result-row";
     row.innerHTML = `
       <span>${escapeHtml(p.name)} <span class="card-sku">SKU: ${escapeHtml(p.sku)}</span><br>
-        <span class="card-sku">${money(p.price)} &middot; stock ${p.quantity}</span></span>
+        <span class="card-sku">${money(p.price, p.currency)} &middot; stock ${p.quantity}</span></span>
       <button type="button" class="btn-secondary">+ Agregar</button>
     `;
     row.addEventListener("click", () => {

@@ -5,49 +5,70 @@ from helpers import ACCOUNT_PAYMENT_METHOD
 
 bp = Blueprint("accounts", __name__)
 
+MOVEMENT_TYPES = {"charge", "payment"}
+
 ACCOUNTS_QUERY = """
     SELECT customers.id, customers.name,
-           COALESCE(charges_ars.total, 0) AS charged_ars,
+           COALESCE(sales_ars.total, 0) AS sales_charged_ars,
+           COALESCE(manual_charges_ars.total, 0) AS manual_charged_ars,
            COALESCE(payments_ars.total, 0) AS paid_ars,
-           COALESCE(charges_usd.total, 0) AS charged_usd,
+           COALESCE(sales_usd.total, 0) AS sales_charged_usd,
+           COALESCE(manual_charges_usd.total, 0) AS manual_charged_usd,
            COALESCE(payments_usd.total, 0) AS paid_usd
     FROM customers
     LEFT JOIN (
         SELECT customer_id, SUM(total) AS total FROM sales
         WHERE payment_method = ? AND (currency IS NULL OR currency = 'ARS') AND customer_id IS NOT NULL
         GROUP BY customer_id
-    ) charges_ars ON charges_ars.customer_id = customers.id
+    ) sales_ars ON sales_ars.customer_id = customers.id
     LEFT JOIN (
         SELECT customer_id, SUM(amount) AS total FROM account_payments
-        WHERE currency IS NULL OR currency = 'ARS'
+        WHERE type = 'charge' AND (currency IS NULL OR currency = 'ARS')
+        GROUP BY customer_id
+    ) manual_charges_ars ON manual_charges_ars.customer_id = customers.id
+    LEFT JOIN (
+        SELECT customer_id, SUM(amount) AS total FROM account_payments
+        WHERE type = 'payment' AND (currency IS NULL OR currency = 'ARS')
         GROUP BY customer_id
     ) payments_ars ON payments_ars.customer_id = customers.id
     LEFT JOIN (
         SELECT customer_id, SUM(total) AS total FROM sales
         WHERE payment_method = ? AND currency = 'USD' AND customer_id IS NOT NULL
         GROUP BY customer_id
-    ) charges_usd ON charges_usd.customer_id = customers.id
+    ) sales_usd ON sales_usd.customer_id = customers.id
     LEFT JOIN (
         SELECT customer_id, SUM(amount) AS total FROM account_payments
-        WHERE currency = 'USD'
+        WHERE type = 'charge' AND currency = 'USD'
+        GROUP BY customer_id
+    ) manual_charges_usd ON manual_charges_usd.customer_id = customers.id
+    LEFT JOIN (
+        SELECT customer_id, SUM(amount) AS total FROM account_payments
+        WHERE type = 'payment' AND currency = 'USD'
         GROUP BY customer_id
     ) payments_usd ON payments_usd.customer_id = customers.id
 """
 
+ACCOUNTS_HAS_ACTIVITY = (
+    "(COALESCE(sales_ars.total, 0) + COALESCE(manual_charges_ars.total, 0) > 0 "
+    "OR COALESCE(sales_usd.total, 0) + COALESCE(manual_charges_usd.total, 0) > 0)"
+)
+
 
 def account_row_to_dict(row):
+    charged_ars = row["sales_charged_ars"] + row["manual_charged_ars"]
+    charged_usd = row["sales_charged_usd"] + row["manual_charged_usd"]
     return {
         "customer_id": row["id"],
         "customer_name": row["name"],
         "ars": {
-            "charged": row["charged_ars"],
+            "charged": charged_ars,
             "paid": row["paid_ars"],
-            "balance": round(row["charged_ars"] - row["paid_ars"], 2),
+            "balance": round(charged_ars - row["paid_ars"], 2),
         },
         "usd": {
-            "charged": row["charged_usd"],
+            "charged": charged_usd,
             "paid": row["paid_usd"],
-            "balance": round(row["charged_usd"] - row["paid_usd"], 2),
+            "balance": round(charged_usd - row["paid_usd"], 2),
         },
     }
 
@@ -66,8 +87,7 @@ def account_detail_page(customer_id):
 def list_accounts():
     db = get_db()
     rows = db.execute(
-        ACCOUNTS_QUERY + " WHERE COALESCE(charges_ars.total, 0) > 0 OR COALESCE(charges_usd.total, 0) > 0 "
-        "ORDER BY customers.name",
+        ACCOUNTS_QUERY + f" WHERE {ACCOUNTS_HAS_ACTIVITY} ORDER BY customers.name",
         (ACCOUNT_PAYMENT_METHOD, ACCOUNT_PAYMENT_METHOD),
     ).fetchall()
     return jsonify([account_row_to_dict(r) for r in rows])
@@ -89,8 +109,8 @@ def get_account(customer_id):
         "SELECT id, total, currency, created_at, note FROM sales WHERE customer_id = ? AND payment_method = ? ORDER BY id",
         (customer_id, ACCOUNT_PAYMENT_METHOD),
     ).fetchall()
-    payments = db.execute(
-        "SELECT id, amount, currency, payment_method, note, created_at FROM account_payments "
+    movements = db.execute(
+        "SELECT id, amount, currency, type, payment_method, note, created_at FROM account_payments "
         "WHERE customer_id = ? ORDER BY id",
         (customer_id,),
     ).fetchall()
@@ -108,27 +128,41 @@ def get_account(customer_id):
         for c in charges
     ] + [
         {
-            "type": "payment",
-            "date": p["created_at"],
-            "amount": p["amount"],
-            "currency": p["currency"] or "ARS",
-            "label": f"Pago ({p['payment_method']})" if p["payment_method"] else "Pago",
-            "note": p["note"] or "",
+            "type": m["type"] or "payment",
+            "date": m["created_at"],
+            "amount": m["amount"],
+            "currency": m["currency"] or "ARS",
+            "label": (
+                f"Cargo manual ({m['payment_method']})" if m["type"] == "charge" and m["payment_method"]
+                else "Cargo manual" if m["type"] == "charge"
+                else f"Pago ({m['payment_method']})" if m["payment_method"]
+                else "Pago"
+            ),
+            "note": m["note"] or "",
             "sale_id": None,
         }
-        for p in payments
+        for m in movements
     ]
     ledger.sort(key=lambda x: x["date"])
 
     result = account_row_to_dict(row) if row else account_row_to_dict(
-        {"id": customer_id, "name": customer["name"], "charged_ars": 0, "paid_ars": 0, "charged_usd": 0, "paid_usd": 0}
+        {
+            "id": customer_id,
+            "name": customer["name"],
+            "sales_charged_ars": 0,
+            "manual_charged_ars": 0,
+            "paid_ars": 0,
+            "sales_charged_usd": 0,
+            "manual_charged_usd": 0,
+            "paid_usd": 0,
+        }
     )
     result["ledger"] = ledger
     return jsonify(result)
 
 
-@bp.route("/api/accounts/<int:customer_id>/payments", methods=["POST"])
-def create_payment(customer_id):
+@bp.route("/api/accounts/<int:customer_id>/movements", methods=["POST"])
+def create_movement(customer_id):
     db = get_db()
     customer = db.execute("SELECT 1 FROM customers WHERE id = ?", (customer_id,)).fetchone()
     if not customer:
@@ -146,13 +180,18 @@ def create_payment(customer_id):
     if currency not in ("ARS", "USD"):
         currency = "ARS"
 
+    movement_type = str(data.get("type", "payment")).strip().lower()
+    if movement_type not in MOVEMENT_TYPES:
+        return jsonify({"error": f"tipo de movimiento invalido: {movement_type}"}), 400
+
     db.execute(
-        "INSERT INTO account_payments (customer_id, amount, currency, payment_method, note, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO account_payments (customer_id, amount, currency, type, payment_method, note, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             customer_id,
             amount,
             currency,
+            movement_type,
             str(data.get("payment_method", "")).strip(),
             str(data.get("note", "")).strip(),
             now_iso(),

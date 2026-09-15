@@ -23,6 +23,8 @@ HEADER_MAP = {
     "detalle": "description",
     "category": "category",
     "categoria": "category",
+    "currency": "currency",
+    "moneda": "currency",
 }
 
 
@@ -71,6 +73,11 @@ def build_csv(headers, rows):
     writer.writerow(headers)
     writer.writerows(rows)
     return output.getvalue()
+
+
+def normalize_currency(value):
+    text = str(value or "ARS").strip().upper()
+    return "USD" if text in ("USD", "US$", "DOLARES", "DOLAR", "U$S") else "ARS"
 
 
 def parse_number(value):

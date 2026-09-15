@@ -3,7 +3,7 @@ import sqlite3
 from flask import Blueprint, Response, jsonify, render_template, request
 
 from db import get_db, now_iso
-from helpers import build_csv, parse_csv_file, parse_number, parse_xlsx_file
+from helpers import build_csv, normalize_currency, parse_csv_file, parse_number, parse_xlsx_file
 
 bp = Blueprint("products", __name__)
 
@@ -35,6 +35,7 @@ def row_to_dict(row):
         "name": row["name"],
         "description": row["description"],
         "category": row["category"] or "",
+        "currency": row["currency"] or "ARS",
         "price": row["price"],
         "quantity": row["quantity"],
         "updated_at": row["updated_at"],
@@ -105,6 +106,7 @@ def create_product():
 
     description = str(data.get("description", "")).strip()
     category = str(data.get("category", "")).strip()
+    currency = normalize_currency(data.get("currency", "ARS"))
 
     db = get_db()
     exists = db.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
@@ -112,9 +114,9 @@ def create_product():
         return jsonify({"error": f"ya existe un producto con sku {sku}"}), 409
 
     db.execute(
-        "INSERT INTO products (sku, name, description, category, price, quantity, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (sku, name, description, category, price, quantity, now_iso()),
+        "INSERT INTO products (sku, name, description, category, currency, price, quantity, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (sku, name, description, category, currency, price, quantity, now_iso()),
     )
     db.commit()
     row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
@@ -132,6 +134,7 @@ def update_product(sku):
     name = str(data.get("name", row["name"])).strip()
     description = str(data.get("description", row["description"]))
     category = str(data.get("category", row["category"])).strip()
+    currency = normalize_currency(data.get("currency", row["currency"]))
     try:
         price = float(data.get("price", row["price"]))
         quantity = int(data.get("quantity", row["quantity"]))
@@ -139,8 +142,8 @@ def update_product(sku):
         return jsonify({"error": "price y quantity deben ser numericos"}), 400
 
     db.execute(
-        "UPDATE products SET name=?, description=?, category=?, price=?, quantity=?, updated_at=? WHERE sku=?",
-        (name, description, category, price, quantity, now_iso(), sku),
+        "UPDATE products SET name=?, description=?, category=?, currency=?, price=?, quantity=?, updated_at=? WHERE sku=?",
+        (name, description, category, currency, price, quantity, now_iso(), sku),
     )
     db.commit()
     row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
@@ -182,7 +185,7 @@ def add_stock(sku):
 
 @bp.route("/api/products/template.csv")
 def download_template():
-    content = "sku,name,price,quantity,description,category\n"
+    content = "sku,name,price,currency,quantity,description,category\n"
     return Response(
         content,
         mimetype="text/csv",
@@ -195,8 +198,11 @@ def export_products():
     db = get_db()
     rows = db.execute("SELECT * FROM products ORDER BY name").fetchall()
     content = build_csv(
-        ["sku", "name", "price", "quantity", "description", "category"],
-        [[r["sku"], r["name"], r["price"], r["quantity"], r["description"], r["category"] or ""] for r in rows],
+        ["sku", "name", "price", "currency", "quantity", "description", "category"],
+        [
+            [r["sku"], r["name"], r["price"], r["currency"] or "ARS", r["quantity"], r["description"], r["category"] or ""]
+            for r in rows
+        ],
     )
     return Response(
         content,
@@ -246,19 +252,20 @@ def import_products():
             continue
         description = str(row.get("description", "") or "").strip()
         category = str(row.get("category", "") or "").strip()
+        currency = normalize_currency(row.get("currency", "ARS"))
 
         exists = db.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
         if exists:
             db.execute(
-                "UPDATE products SET name=?, description=?, category=?, price=?, quantity=?, updated_at=? WHERE sku=?",
-                (name, description, category, price, quantity, now, sku),
+                "UPDATE products SET name=?, description=?, category=?, currency=?, price=?, quantity=?, updated_at=? WHERE sku=?",
+                (name, description, category, currency, price, quantity, now, sku),
             )
             updated += 1
         else:
             db.execute(
-                "INSERT INTO products (sku, name, description, category, price, quantity, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (sku, name, description, category, price, quantity, now),
+                "INSERT INTO products (sku, name, description, category, currency, price, quantity, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (sku, name, description, category, currency, price, quantity, now),
             )
             created += 1
 
