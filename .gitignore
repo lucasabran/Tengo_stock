@@ -1,0 +1,25 @@
+# Credenciales y tokens -- NUNCA subir esto a GitHub
+.env
+token.json
+
+# Estado local de publicaciones (especifico de cada cuenta de ML)
+published_skus.json
+stock_paused_skus.json
+discontinued_skus.json
+catalog_listings.json
+
+# Excels: catalogo scrapeado y resultados de publicacion (datos, no codigo,
+# y especificos de cada corrida/cuenta)
+*.xlsx
+
+# Reportes y logs de las corridas (salida de los scripts, no codigo)
+*.txt
+!requirements.txt
+catalog_optin_report.json
+moderation_sweep_report.json
+opt_obey_verification*.json
+waiting_for_patch_analysis.json
+
+# Python
+__pycache__/
+*.pyc
