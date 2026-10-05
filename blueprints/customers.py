@@ -3,6 +3,7 @@ import sqlite3
 from flask import Blueprint, jsonify, render_template, request
 
 from db import get_db, now_iso
+import auth
 
 bp = Blueprint("customers", __name__)
 
@@ -78,6 +79,7 @@ def create_customer():
         ),
     )
     db.commit()
+    auth.audit("cliente_creado", "customer", cur.lastrowid, name)
     row = db.execute("SELECT * FROM customers WHERE id = ?", (cur.lastrowid,)).fetchone()
     return jsonify(row_to_dict(row)), 201
 
@@ -107,6 +109,7 @@ def update_customer(customer_id):
         ),
     )
     db.commit()
+    auth.audit("cliente_editado", "customer", customer_id, name)
     row = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
     return jsonify(row_to_dict(row))
 
@@ -114,9 +117,12 @@ def update_customer(customer_id):
 @bp.route("/api/customers/<int:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     db = get_db()
+    old = db.execute("SELECT name FROM customers WHERE id = ?", (customer_id,)).fetchone()
     try:
         db.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
         db.commit()
+        if old:
+            auth.audit("cliente_eliminado", "customer", customer_id, old["name"])
     except sqlite3.IntegrityError:
         db.rollback()
         return jsonify({"error": "no se puede eliminar, el cliente tiene ventas asociadas"}), 409

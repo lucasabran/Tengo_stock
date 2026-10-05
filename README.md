@@ -113,3 +113,19 @@ despliegue. Para stock real eso es un problema, asi que hay que elegir un
 plan que tenga disco persistente (a veces es un agregado pago, unos pocos
 dolares por mes) o pasar la base a un servicio de base de datos en la nube.
 Lo definimos juntos antes de publicarla para no perder datos.
+
+## Usuarios, roles y permisos
+
+- El acceso es con usuario y clave (pantalla de login, sesion de 14 dias).
+- Al primer arranque se crean: el dueño (con `STOCK_USER` / `STOCK_PASSWORD`), `denis` y `nahuel` (rol Administrador) y `user1`, `user2`, `user3` (rol Operador). Las claves temporales de los demas se imprimen una sola vez en el log del servidor; tambien se pueden regenerar desde `/usuarios`.
+- Solo el dueño entra a `/usuarios`: crea usuarios, desactiva, resetea claves y arma roles con permisos a medida.
+- Rol Operador: solo stock y ventas. No ve dashboard, gastos, cuentas corrientes, clientes ni devoluciones.
+- `/actividad` (administradores): registro de quien hizo que (ventas, stock, precios, gastos, cambios de usuarios, intentos de ingreso fallidos).
+- Si el dueño pierde la clave: en Render definir `STOCK_FORCE_OWNER_RESET=1` y `STOCK_PASSWORD=<nueva>`, redeployar, y sacar la variable `STOCK_FORCE_OWNER_RESET`.
+- Fotos de producto: se guardan en `uploads/` junto a la base (en Render, dentro del disco `/var/data`). Opcionalmente `STOCK_UPLOAD_DIR`.
+
+## Cargas masivas, eliminaciones y limpieza
+
+- Ventas, gastos e ingresos de stock se pueden cargar desde Excel/CSV (cada pantalla tiene su boton y su plantilla). Las filas con errores se informan y no se cargan; las correctas si.
+- Se pueden eliminar ventas (repone el stock y borra sus devoluciones), devoluciones (vuelve a descontar el stock) y gastos. Cada permiso se asigna por rol; el Operador no tiene ninguno.
+- `/usuarios` > Herramientas (solo el dueño): descargar copia de seguridad y borrar datos de prueba. Antes de borrar se guarda una copia automatica en `backups/`.

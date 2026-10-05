@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from db import get_db, now_iso
+import auth
 
 bp = Blueprint("channels", __name__)
 
@@ -44,6 +45,7 @@ def create_channel():
         (name, type_, now_iso()),
     )
     db.commit()
+    auth.audit("canal_creado", "channel", cur.lastrowid, name)
     row = db.execute("SELECT * FROM channels WHERE id = ?", (cur.lastrowid,)).fetchone()
     return jsonify(row_to_dict(row)), 201
 
@@ -65,5 +67,6 @@ def update_channel(channel_id):
         (name, type_, active, channel_id),
     )
     db.commit()
+    auth.audit("canal_editado", "channel", channel_id, f"{name} activo={active}")
     row = db.execute("SELECT * FROM channels WHERE id = ?", (channel_id,)).fetchone()
     return jsonify(row_to_dict(row))

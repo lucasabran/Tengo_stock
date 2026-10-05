@@ -1,0 +1,9 @@
+{% extends "_base.html" %}
+{% block title %}Sin acceso{% endblock %}
+{% block content %}
+<main class="login-card" style="margin-top:3rem">
+  <h1 style="font-size:1.2rem;margin-top:0">{{ message }}</h1>
+  <p class="card-sku">Si necesitas acceso a esta seccion, pedile a un administrador que ajuste tu rol.</p>
+  <a class="btn-primary" style="display:inline-block;text-decoration:none" href="{{ home_url }}">Volver</a>
+</main>
+{% endblock %}

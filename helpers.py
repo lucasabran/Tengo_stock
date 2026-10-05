@@ -25,13 +25,48 @@ HEADER_MAP = {
     "categoria": "category",
     "currency": "currency",
     "moneda": "currency",
+    # ventas / gastos / ingresos de stock masivos
+    "fecha": "date",
+    "date": "date",
+    "canal": "channel",
+    "channel": "channel",
+    "cliente": "customer",
+    "customer": "customer",
+    "venta": "order",
+    "nro_venta": "order",
+    "n_venta": "order",
+    "pedido": "order",
+    "orden": "order",
+    "order": "order",
+    "precio_unitario": "price",
+    "unit_price": "price",
+    "descuento": "discount",
+    "discount": "discount",
+    "medio_de_pago": "payment_method",
+    "medio_pago": "payment_method",
+    "forma_de_pago": "payment_method",
+    "forma_pago": "payment_method",
+    "pago": "payment_method",
+    "payment_method": "payment_method",
+    "nota": "note",
+    "notas": "note",
+    "observaciones": "note",
+    "observacion": "note",
+    "note": "note",
+    "monto": "amount",
+    "importe": "amount",
+    "amount": "amount",
+    "proveedor": "vendor",
+    "vendor": "vendor",
+    "motivo": "reason",
+    "reason": "reason",
 }
 
 
 def normalize_header(text):
     text = (text or "").strip().lower()
     text = "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
-    return text
+    return text.replace(" ", "_").replace("-", "_").replace(".", "")
 
 
 def map_headers(headers):
@@ -114,3 +149,22 @@ def parse_xlsx_file(file_storage):
                 item[key] = row[idx]
         items.append(item)
     return items
+
+
+def parse_date(value):
+    """Devuelve 'YYYY-MM-DD' o None. Acepta fechas de Excel y textos dd/mm/aaaa o aaaa-mm-dd."""
+    from datetime import date, datetime
+
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(text[:10] if fmt.startswith("%Y-") else text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise ValueError(f"fecha invalida: {text}")

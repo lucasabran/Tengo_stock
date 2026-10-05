@@ -1,0 +1,57 @@
+{% extends "_base.html" %}
+{% block title %}Mi cuenta{% endblock %}
+{% block content %}
+<header>
+  <h1>Mi cuenta</h1>
+</header>
+<main>
+  <section class="card" style="max-width:480px">
+    <div class="card-name">{{ current_user.full_name }}</div>
+    <div class="card-sku">Usuario: {{ current_user.username }} &middot; Rol: {{ "Dueño" if current_user.is_owner else current_user.role_name }}</div>
+  </section>
+
+  <form id="password-form" class="sale-form" style="max-width:480px;margin-top:1rem">
+    <h2 class="section-title" style="margin-top:0">{% if forced %}Tenes que elegir una clave nueva para seguir{% else %}Cambiar clave{% endif %}</h2>
+    <label>Clave actual
+      <input id="p-current" type="password" autocomplete="current-password" required>
+    </label>
+    <label>Clave nueva (minimo 8 caracteres)
+      <input id="p-new" type="password" autocomplete="new-password" minlength="8" required>
+    </label>
+    <label>Repetir clave nueva
+      <input id="p-repeat" type="password" autocomplete="new-password" minlength="8" required>
+    </label>
+    <div id="p-error" class="error hidden"></div>
+    <button type="submit" class="btn-primary">Guardar clave</button>
+  </form>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById("password-form");
+const errEl = document.getElementById("p-error");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errEl.classList.add("hidden");
+  if (document.getElementById("p-new").value !== document.getElementById("p-repeat").value) {
+    errEl.textContent = "Las claves nuevas no coinciden";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  try {
+    await fetchJSON("/api/me/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current: document.getElementById("p-current").value, new: document.getElementById("p-new").value }),
+    });
+  } catch (err) {
+    errEl.textContent = errorMessage(err);
+    errEl.classList.remove("hidden");
+    return;
+  }
+  toast("Clave actualizada", "success");
+  form.reset();
+  setTimeout(() => { window.location.href = "/"; }, 800);
+});
+</script>
+{% endblock %}

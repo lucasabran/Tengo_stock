@@ -1,3 +1,5 @@
 stock.db
 __pycache__/
 *.pyc
+uploads/
+backups/

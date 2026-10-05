@@ -1,0 +1,104 @@
+{% extends "_base.html" %}
+{% block title %}Usuarios y roles{% endblock %}
+{% block content %}
+<header>
+  <h1>Usuarios y roles</h1>
+  <div class="tabs">
+    <button type="button" class="tab active" data-tab="users">Usuarios</button>
+    <button type="button" class="tab" data-tab="roles">Roles y permisos</button>
+    <button type="button" class="tab" data-tab="tools">Herramientas</button>
+  </div>
+</header>
+
+<main>
+  <section id="tab-users">
+    <div class="detail-actions"><button id="btn-new-user" type="button" class="btn-primary">+ Nuevo usuario</button></div>
+    <div id="users-list"></div>
+  </section>
+  <section id="tab-roles" class="hidden">
+    <div class="detail-actions"><button id="btn-new-role" type="button" class="btn-primary">+ Nuevo rol</button></div>
+    <div id="roles-list"></div>
+  </section>
+  <section id="tab-tools" class="hidden">
+    <div class="card tools-card">
+      <div class="card-name">Copia de seguridad</div>
+      <div class="card-desc">Descarga toda la base de datos (productos, ventas, gastos, usuarios). Conviene hacerla de vez en cuando y antes de borrar algo.</div>
+      <div class="detail-actions"><a class="btn-secondary" href="/api/admin/backup">Descargar copia</a></div>
+    </div>
+    <div class="card tools-card tools-danger">
+      <div class="card-name">Borrar datos de prueba</div>
+      <div class="card-desc">Deja el sistema limpio para empezar a usarlo. Se hace una copia automatica antes de borrar. Los usuarios, roles y canales no se tocan.</div>
+      <form id="wipe-form">
+        <label class="check-row"><input type="checkbox" value="sales"> Ventas y devoluciones</label>
+        <label class="check-row"><input type="checkbox" value="expenses"> Gastos</label>
+        <label class="check-row"><input type="checkbox" value="products"> Productos y movimientos de stock (requiere borrar ventas)</label>
+        <label class="check-row"><input type="checkbox" value="customers"> Clientes y cuentas corrientes (requiere borrar ventas)</label>
+        <label class="check-row"><input type="checkbox" value="audit"> Registro de actividad</label>
+        <label>Para confirmar, escribi BORRAR
+          <input id="wipe-confirm" autocomplete="off" placeholder="BORRAR">
+        </label>
+        <div id="wipe-error" class="error hidden"></div>
+        <button type="submit" class="btn-danger">Borrar lo seleccionado</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<dialog id="user-dialog">
+  <form id="user-form">
+    <h2 id="user-title">Nuevo usuario</h2>
+    <label>Usuario (para ingresar)
+      <input id="u-username" autocapitalize="none" autocomplete="off" placeholder="ej: maria" required>
+    </label>
+    <label>Nombre completo
+      <input id="u-fullname" required>
+    </label>
+    <label>Rol
+      <select id="u-role" required></select>
+    </label>
+    <label id="u-password-label">Clave inicial (opcional)
+      <input id="u-password" type="text" autocomplete="off" placeholder="Vacio = se genera una clave temporal">
+    </label>
+    <label id="u-active-label" class="check-row hidden"><input id="u-active" type="checkbox"> Usuario activo</label>
+    <div id="user-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="user-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="role-dialog">
+  <form id="role-form">
+    <h2 id="role-title">Nuevo rol</h2>
+    <label>Nombre del rol
+      <input id="r-name" required>
+    </label>
+    <label>Descripcion
+      <input id="r-description">
+    </label>
+    <div id="r-perms"></div>
+    <div id="role-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="role-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="secret-dialog">
+  <form method="dialog">
+    <h2 id="secret-title">Clave temporal</h2>
+    <p id="secret-text" class="card-sku"></p>
+    <div id="secret-value" class="secret-value"></div>
+    <p class="card-sku">Copiala y pasasela a la persona. Se la va a pedir cambiar al ingresar. Esta clave no se vuelve a mostrar.</p>
+    <div class="form-actions">
+      <button type="button" id="secret-copy">Copiar</button>
+      <button type="submit" value="ok">Cerrar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='usuarios.js') }}"></script>
+{% endblock %}

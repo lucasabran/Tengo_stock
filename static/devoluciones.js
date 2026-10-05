@@ -16,15 +16,29 @@ async function refresh() {
     return;
   }
   for (const r of returns) {
-    const row = document.createElement("a");
+    const row = document.createElement("div");
     row.className = "list-row";
-    row.href = `/ventas/${r.sale_id}`;
     row.innerHTML = `
-      <div>
+      <a class="list-row-link" href="/ventas/${r.sale_id}">
         <div class="list-row-title">Venta ${escapeHtml(r.sale_number)}</div>
         <div class="list-row-sub">${escapeHtml(REASON_LABELS[r.reason] || r.reason || "Sin motivo")} &middot; ${formatDateTime(r.created_at)}</div>
-      </div>
+      </a>
+      ${can("returns.delete") ? '<button type="button" class="btn-danger" data-act="delete">Eliminar</button>' : ""}
     `;
+    const del = row.querySelector('[data-act="delete"]');
+    if (del) {
+      del.addEventListener("click", async () => {
+        if (!(await confirmDialog("Eliminar esta devolucion? El stock devuelto vuelve a descontarse. No se puede deshacer."))) return;
+        try {
+          await fetchJSON(`/api/returns/${r.id}`, { method: "DELETE" });
+        } catch (err) {
+          toast(errorMessage(err), "error", 8000);
+          return;
+        }
+        toast("Devolucion eliminada", "success");
+        refresh();
+      });
+    }
     listEl.appendChild(row);
   }
 }

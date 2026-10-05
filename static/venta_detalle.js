@@ -52,9 +52,25 @@ async function load() {
 
     <div class="card-actions detail-actions">
       <a class="btn-secondary" href="/ventas/${sale.id}/comprobante" target="_blank">Ver comprobante</a>
-      <a class="btn-secondary" href="/devoluciones/nueva?sale_id=${sale.id}">Registrar devolucion</a>
+      ${can("returns.create") ? `<a class="btn-secondary" href="/devoluciones/nueva?sale_id=${sale.id}">Registrar devolucion</a>` : ""}
+      ${can("sales.delete") ? '<button type="button" id="btn-delete-sale" class="btn-danger">Eliminar venta</button>' : ""}
     </div>
   `;
+  const del = document.getElementById("btn-delete-sale");
+  if (del) {
+    del.addEventListener("click", async () => {
+      const msg = `Eliminar la venta ${sale.number}? Se repone el stock de los productos y se borran sus devoluciones. No se puede deshacer.`;
+      if (!(await confirmDialog(msg))) return;
+      try {
+        await fetchJSON(`/api/sales/${sale.id}`, { method: "DELETE" });
+      } catch (err) {
+        toast(errorMessage(err), "error", 8000);
+        return;
+      }
+      toast("Venta eliminada", "success");
+      setTimeout(() => { window.location.href = "/ventas"; }, 600);
+    });
+  }
 }
 
 load();

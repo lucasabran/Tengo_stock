@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, jsonify, render_template, request
 
 from db import get_db, now_iso
+import auth
 from helpers import ACCOUNT_PAYMENT_METHOD
 
 bp = Blueprint("accounts", __name__)
@@ -185,8 +186,8 @@ def create_movement(customer_id):
         return jsonify({"error": f"tipo de movimiento invalido: {movement_type}"}), 400
 
     db.execute(
-        "INSERT INTO account_payments (customer_id, amount, currency, type, payment_method, note, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO account_payments (customer_id, amount, currency, type, payment_method, note, created_at, created_by) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             customer_id,
             amount,
@@ -195,7 +196,9 @@ def create_movement(customer_id):
             str(data.get("payment_method", "")).strip(),
             str(data.get("note", "")).strip(),
             now_iso(),
+            auth.actor(),
         ),
     )
     db.commit()
+    auth.audit("movimiento_cuenta", "customer", customer_id, f"{movement_type} {currency} {amount:,.2f}")
     return get_account(customer_id)

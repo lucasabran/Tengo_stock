@@ -1,6 +1,7 @@
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 from db import get_db, now_iso
+import auth
 from helpers import ACCOUNT_PAYMENT_METHOD, build_csv
 
 bp = Blueprint("sales", __name__)
@@ -255,8 +256,8 @@ def create_sale():
 
         cur = db.execute(
             "INSERT INTO sales (channel_id, customer_id, status, subtotal, discount, total, "
-            "payment_method, currency, note, created_at) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?)",
-            (channel_id, customer_id, subtotal, discount, total, payment_method, currency, note, now),
+            "payment_method, currency, note, created_at, created_by) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (channel_id, customer_id, subtotal, discount, total, payment_method, currency, note, now, auth.actor()),
         )
         sale_id = cur.lastrowid
 
@@ -267,15 +268,17 @@ def create_sale():
                 (sale_id, line["sku"], line["product_name"], line["unit_price"], line["quantity"], line["line_total"]),
             )
             db.execute(
-                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at) "
-                "VALUES (?, ?, 'venta', 'sale', ?, ?)",
-                (line["sku"], -line["quantity"], sale_id, now),
+                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at, created_by) "
+                "VALUES (?, ?, 'venta', 'sale', ?, ?, ?)",
+                (line["sku"], -line["quantity"], sale_id, now, auth.actor()),
             )
 
         db.commit()
     except Exception as exc:
         db.rollback()
         return jsonify({"error": "No se pudo registrar la venta", "details": [str(exc)]}), 409
+
+    auth.audit("venta_creada", "sale", sale_id, f"{currency} {total:,.2f} - {len(lines)} item(s)")
 
     row = db.execute(SUMMARY_QUERY + " WHERE sales.id = ?", (sale_id,)).fetchone()
     return jsonify(sale_summary_dict(row)), 201
@@ -291,3 +294,59 @@ def comprobante(sale_id):
         "SELECT * FROM sale_items WHERE sale_id = ? ORDER BY id", (sale_id,)
     ).fetchall()
     return render_template("venta_comprobante.html", sale=sale_summary_dict(row), items=items)
+
+
+def _revert_return_stock(db, return_id, now):
+    """Deshace el efecto en stock de una devolucion. Devuelve un mensaje de error o None."""
+    items = db.execute(
+        "SELECT ri.quantity, si.sku FROM return_items ri JOIN sale_items si ON si.id = ri.sale_item_id WHERE ri.return_id = ?",
+        (return_id,),
+    ).fetchall()
+    for it in items:
+        cur = db.execute(
+            "UPDATE products SET quantity = quantity - ?, updated_at = ? WHERE sku = ? AND quantity >= ?",
+            (it["quantity"], now, it["sku"], it["quantity"]),
+        )
+        if cur.rowcount == 0:
+            return f"{it['sku']}: no hay stock suficiente para deshacer la devolucion (ya se vendio)"
+    db.execute("DELETE FROM stock_movements WHERE reference_type = 'return' AND reference_id = ?", (return_id,))
+    db.execute("DELETE FROM return_items WHERE return_id = ?", (return_id,))
+    db.execute("DELETE FROM returns WHERE id = ?", (return_id,))
+    return None
+
+
+@bp.route("/api/sales/<int:sale_id>", methods=["DELETE"])
+def delete_sale(sale_id):
+    db = get_db()
+    sale = db.execute("SELECT * FROM sales WHERE id = ?", (sale_id,)).fetchone()
+    if not sale:
+        return jsonify({"error": "venta no encontrada"}), 404
+
+    now = now_iso()
+    try:
+        # primero se deshacen las devoluciones de esta venta (devuelven stock al deposito)
+        for r in db.execute("SELECT id FROM returns WHERE sale_id = ?", (sale_id,)).fetchall():
+            problem = _revert_return_stock(db, r["id"], now)
+            if problem:
+                raise ValueError(problem)
+        # despues se repone el stock que desconto la venta
+        if sale["stock_deducted"]:
+            for it in db.execute("SELECT sku, quantity FROM sale_items WHERE sale_id = ?", (sale_id,)).fetchall():
+                db.execute(
+                    "UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE sku = ?",
+                    (it["quantity"], now, it["sku"]),
+                )
+        db.execute("DELETE FROM stock_movements WHERE reference_type = 'sale' AND reference_id = ?", (sale_id,))
+        db.execute("DELETE FROM sale_items WHERE sale_id = ?", (sale_id,))
+        db.execute("DELETE FROM sales WHERE id = ?", (sale_id,))
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return jsonify({"error": "No se pudo eliminar la venta", "details": [str(exc)]}), 409
+
+    auth.audit(
+        "venta_eliminada", "sale", sale_id,
+        f"V-{sale_id:06d} {sale['currency']} {sale['total']:,.2f} ({sale['created_at'][:10]})"
+        + (" - stock repuesto" if sale["stock_deducted"] else ""),
+    )
+    return jsonify({"ok": True})

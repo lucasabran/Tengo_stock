@@ -1,6 +1,7 @@
 from flask import Blueprint, Response, jsonify, render_template, request
 
 from db import get_db, now_iso
+import auth
 from helpers import build_csv
 
 bp = Blueprint("expenses", __name__)
@@ -103,8 +104,8 @@ def create_expense():
     now = now_iso()
     db = get_db()
     cur = db.execute(
-        "INSERT INTO expenses (category, amount, expense_date, vendor, note, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO expenses (category, amount, expense_date, vendor, note, created_at, updated_at, created_by) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             category,
             amount,
@@ -113,9 +114,11 @@ def create_expense():
             str(data.get("note", "")).strip(),
             now,
             now,
+            auth.actor(),
         ),
     )
     db.commit()
+    auth.audit("gasto_creado", "expense", cur.lastrowid, f"{category} ${amount:,.2f}")
     row = db.execute("SELECT * FROM expenses WHERE id = ?", (cur.lastrowid,)).fetchone()
     return jsonify(row_to_dict(row)), 201
 
@@ -146,6 +149,7 @@ def update_expense(expense_id):
         ),
     )
     db.commit()
+    auth.audit("gasto_editado", "expense", expense_id, f"antes ${row['amount']:,.2f} -> ahora ${amount:,.2f}")
     row = db.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
     return jsonify(row_to_dict(row))
 
@@ -153,6 +157,9 @@ def update_expense(expense_id):
 @bp.route("/api/expenses/<int:expense_id>", methods=["DELETE"])
 def delete_expense(expense_id):
     db = get_db()
+    old = db.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
     db.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
     db.commit()
+    if old:
+        auth.audit("gasto_eliminado", "expense", expense_id, f"{old['category']} ${old['amount']:,.2f}")
     return jsonify({"ok": True})

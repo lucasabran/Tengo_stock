@@ -7,6 +7,11 @@
   <div class="filters-row">
     <a id="export-link" href="/api/expenses/export.csv">Exportar</a>
   </div>
+  <div class="import-row" id="import-row">
+    <button id="btn-import" type="button">Importar gastos (Excel/CSV)</button>
+    <a href="/api/expenses/template.xlsx">Descargar plantilla</a>
+  </div>
+  <input type="file" id="import-file" accept=".csv,.xlsx,.xlsm" class="hidden">
 </header>
 
 <main>

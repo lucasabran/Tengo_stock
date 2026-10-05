@@ -64,7 +64,8 @@ def summary():
     expenses_month_total = expenses_month["s"]
 
     low_stock_rows = db.execute(
-        "SELECT sku, name, quantity FROM products WHERE quantity <= ? ORDER BY quantity ASC LIMIT 10",
+        "SELECT sku, name, quantity FROM products "
+        "WHERE quantity <= CASE WHEN min_stock > 0 THEN min_stock ELSE ? END ORDER BY quantity ASC LIMIT 10",
         (LOW_STOCK_THRESHOLD,),
     ).fetchall()
 

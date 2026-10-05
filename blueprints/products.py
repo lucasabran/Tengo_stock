@@ -1,11 +1,17 @@
+import os
 import sqlite3
+import uuid
 
-from flask import Blueprint, Response, jsonify, render_template, request
+from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
 
-from db import get_db, now_iso
+from db import DB_PATH, get_db, now_iso
+import auth
 from helpers import build_csv, normalize_currency, parse_csv_file, parse_number, parse_xlsx_file
 
 bp = Blueprint("products", __name__)
+
+UPLOAD_DIR = os.path.join(os.environ.get("STOCK_UPLOAD_DIR") or os.path.join(os.path.dirname(str(DB_PATH)), "uploads"), "products")
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 STOCK_ENTRY_REASONS = {
     "ajuste_manual",
@@ -38,6 +44,8 @@ def row_to_dict(row):
         "currency": row["currency"] or "ARS",
         "price": row["price"],
         "quantity": row["quantity"],
+        "min_stock": row["min_stock"] or 0,
+        "photo_url": f"/media/products/{row['photo']}" if row["photo"] else "",
         "updated_at": row["updated_at"],
     }
 
@@ -107,6 +115,10 @@ def create_product():
     description = str(data.get("description", "")).strip()
     category = str(data.get("category", "")).strip()
     currency = normalize_currency(data.get("currency", "ARS"))
+    try:
+        min_stock = max(int(data.get("min_stock") or 0), 0)
+    except (TypeError, ValueError):
+        return jsonify({"error": "stock minimo debe ser numerico"}), 400
 
     db = get_db()
     exists = db.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
@@ -114,11 +126,12 @@ def create_product():
         return jsonify({"error": f"ya existe un producto con sku {sku}"}), 409
 
     db.execute(
-        "INSERT INTO products (sku, name, description, category, currency, price, quantity, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (sku, name, description, category, currency, price, quantity, now_iso()),
+        "INSERT INTO products (sku, name, description, category, currency, price, quantity, min_stock, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (sku, name, description, category, currency, price, quantity, min_stock, now_iso()),
     )
     db.commit()
+    auth.audit("producto_creado", "product", sku, f"{name} - {quantity} u. a {price:,.2f}")
     row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
     return jsonify(row_to_dict(row)), 201
 
@@ -138,14 +151,23 @@ def update_product(sku):
     try:
         price = float(data.get("price", row["price"]))
         quantity = int(data.get("quantity", row["quantity"]))
+        min_stock = max(int(data.get("min_stock", row["min_stock"]) or 0), 0)
     except (TypeError, ValueError):
-        return jsonify({"error": "price y quantity deben ser numericos"}), 400
+        return jsonify({"error": "price, quantity y stock minimo deben ser numericos"}), 400
 
     db.execute(
-        "UPDATE products SET name=?, description=?, category=?, currency=?, price=?, quantity=?, updated_at=? WHERE sku=?",
-        (name, description, category, currency, price, quantity, now_iso(), sku),
+        "UPDATE products SET name=?, description=?, category=?, currency=?, price=?, quantity=?, min_stock=?, updated_at=? WHERE sku=?",
+        (name, description, category, currency, price, quantity, min_stock, now_iso(), sku),
     )
     db.commit()
+    changes = []
+    if price != row["price"]:
+        changes.append(f"precio {row['price']:,.2f} -> {price:,.2f}")
+    if quantity != row["quantity"]:
+        changes.append(f"cantidad {row['quantity']} -> {quantity}")
+    if name != row["name"]:
+        changes.append(f"nombre {row['name']} -> {name}")
+    auth.audit("producto_editado", "product", sku, "; ".join(changes) or "sin cambios de precio/cantidad")
     row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
     return jsonify(row_to_dict(row))
 
@@ -174,11 +196,12 @@ def add_stock(sku):
         (new_qty, now_iso(), sku),
     )
     db.execute(
-        "INSERT INTO stock_movements (sku, change_qty, reason, note, reference_type, reference_id, created_at) "
-        "VALUES (?, ?, ?, ?, '', NULL, ?)",
-        (sku, amount, reason, note, now_iso()),
+        "INSERT INTO stock_movements (sku, change_qty, reason, note, reference_type, reference_id, created_at, created_by) "
+        "VALUES (?, ?, ?, ?, '', NULL, ?, ?)",
+        (sku, amount, reason, note, now_iso(), auth.actor()),
     )
     db.commit()
+    auth.audit("stock_cargado", "product", sku, f"{amount:+d} ({reason}) -> {new_qty}")
     row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
     return jsonify(row_to_dict(row))
 
@@ -270,16 +293,90 @@ def import_products():
             created += 1
 
     db.commit()
+    auth.audit("productos_importados", "product", "", f"{created} nuevos, {updated} actualizados, {len(errors)} errores")
     return jsonify({"created": created, "updated": updated, "errors": errors})
 
 
 @bp.route("/api/products/<sku>", methods=["DELETE"])
 def delete_product(sku):
     db = get_db()
+    old = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
     try:
         db.execute("DELETE FROM products WHERE sku = ?", (sku,))
         db.commit()
     except sqlite3.IntegrityError:
         db.rollback()
         return jsonify({"error": "no se puede eliminar, el producto tiene ventas o movimientos asociados"}), 409
+    if old:
+        _remove_photo_file(old["photo"])
+        auth.audit("producto_eliminado", "product", sku, f"{old['name']} (stock {old['quantity']})")
     return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Fotos de producto
+# ---------------------------------------------------------------------------
+def _detect_image_ext(head):
+    if head.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _remove_photo_file(filename):
+    if not filename:
+        return
+    try:
+        os.remove(os.path.join(UPLOAD_DIR, os.path.basename(filename)))
+    except OSError:
+        pass
+
+
+@bp.route("/media/products/<path:filename>")
+def product_photo(filename):
+    resp = send_from_directory(UPLOAD_DIR, os.path.basename(filename), max_age=3600)
+    resp.headers["Cache-Control"] = "private, max-age=3600"
+    return resp
+
+
+@bp.route("/api/products/<sku>/photo", methods=["POST"])
+def upload_photo(sku):
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
+    if not row:
+        return jsonify({"error": "producto no encontrado"}), 404
+    file = request.files.get("photo")
+    if not file:
+        return jsonify({"error": "no se recibio ninguna foto"}), 400
+    data = file.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        return jsonify({"error": "la foto pesa mas de 5 MB"}), 400
+    ext = _detect_image_ext(data[:16])
+    if not ext:
+        return jsonify({"error": "formato no soportado, usa JPG, PNG o WEBP"}), 400
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    with open(os.path.join(UPLOAD_DIR, filename), "wb") as fh:
+        fh.write(data)
+    _remove_photo_file(row["photo"])
+    db.execute("UPDATE products SET photo = ?, updated_at = ? WHERE sku = ?", (filename, now_iso(), sku))
+    db.commit()
+    auth.audit("foto_subida", "product", sku, filename)
+    return jsonify(row_to_dict(db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()))
+
+
+@bp.route("/api/products/<sku>/photo", methods=["DELETE"])
+def delete_photo(sku):
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
+    if not row:
+        return jsonify({"error": "producto no encontrado"}), 404
+    _remove_photo_file(row["photo"])
+    db.execute("UPDATE products SET photo = '', updated_at = ? WHERE sku = ?", (now_iso(), sku))
+    db.commit()
+    auth.audit("foto_eliminada", "product", sku, "")
+    return jsonify(row_to_dict(db.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()))

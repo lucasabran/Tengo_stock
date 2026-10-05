@@ -57,3 +57,18 @@ fromEl.addEventListener("change", refresh);
 toEl.addEventListener("change", refresh);
 
 loadChannels().then(refresh);
+
+if (can("sales.import")) {
+  setupBulkImport({
+    button: "btn-import",
+    fileInput: "import-file",
+    url: "/api/sales/import",
+    title: "Importacion de ventas",
+    noun: "ventas",
+    extraFields: () => ({ deduct_stock: document.getElementById("deduct-stock").checked ? "1" : "0" }),
+    onDone: refresh,
+  });
+} else {
+  document.getElementById("import-row").classList.add("hidden");
+}
+if (!can("sales.export")) exportLink.classList.add("hidden");

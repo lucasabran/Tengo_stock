@@ -20,6 +20,12 @@ const fPrice = document.getElementById("f-price");
 const fCurrency = document.getElementById("f-currency");
 const fQuantity = document.getElementById("f-quantity");
 const fDescription = document.getElementById("f-description");
+const fMinStock = document.getElementById("f-min-stock");
+const fPhoto = document.getElementById("f-photo");
+const photoPreview = document.getElementById("photo-preview");
+const photoRemove = document.getElementById("photo-remove");
+
+let removePhoto = false;
 
 const stockEntryDialog = document.getElementById("stock-entry-dialog");
 const stockEntryForm = document.getElementById("stock-entry-form");
@@ -67,10 +73,12 @@ function render(products) {
   for (const p of products) {
     const card = document.createElement("div");
     card.className = "card";
-    const low = p.quantity <= LOW_STOCK_THRESHOLD;
+    const low = p.quantity <= (p.min_stock > 0 ? p.min_stock : LOW_STOCK_THRESHOLD);
+    const canEdit = can("stock.edit");
     card.innerHTML = `
       <div class="card-top">
-        <div>
+        ${p.photo_url ? `<img class="card-photo" src="${escapeHtml(p.photo_url)}" alt="" loading="lazy">` : ""}
+        <div class="card-info">
           <div class="card-name">${escapeHtml(p.name)}</div>
           <div class="card-sku">SKU: ${escapeHtml(p.sku)}${p.category ? ` &middot; ${escapeHtml(p.category)}` : ""}</div>
         </div>
@@ -78,21 +86,22 @@ function render(products) {
       </div>
       ${p.description ? `<div class="card-desc">${escapeHtml(p.description)}</div>` : ""}
       <div class="card-bottom">
-        <div class="qty ${low ? "low" : ""}">Stock: ${p.quantity}</div>
+        <div class="qty ${low ? "low" : ""}">Stock: ${p.quantity}${p.min_stock > 0 ? ` <span class="card-sku">(minimo ${p.min_stock})</span>` : ""}</div>
         <div class="card-actions">
-          <button data-action="minus">-1</button>
-          <button data-action="plus">+1</button>
-          <button data-action="load">Cargar stock</button>
-          <button data-action="edit">Editar</button>
-          <button data-action="delete">Eliminar</button>
+          ${canEdit ? '<button data-action="minus">-1</button><button data-action="plus">+1</button><button data-action="load">Cargar stock</button><button data-action="edit">Editar</button>' : ""}
+          ${can("stock.delete") ? '<button data-action="delete">Eliminar</button>' : ""}
         </div>
       </div>
     `;
-    card.querySelector('[data-action="edit"]').addEventListener("click", () => openEdit(p));
-    card.querySelector('[data-action="delete"]').addEventListener("click", () => removeProduct(p));
-    card.querySelector('[data-action="plus"]').addEventListener("click", () => addStock(p.sku, 1));
-    card.querySelector('[data-action="minus"]').addEventListener("click", () => addStock(p.sku, -1));
-    card.querySelector('[data-action="load"]').addEventListener("click", () => openStockEntry(p));
+    const on = (action, fn) => {
+      const el = card.querySelector(`[data-action="${action}"]`);
+      if (el) el.addEventListener("click", fn);
+    };
+    on("edit", () => openEdit(p));
+    on("delete", () => removeProduct(p));
+    on("plus", () => addStock(p.sku, 1));
+    on("minus", () => addStock(p.sku, -1));
+    on("load", () => openStockEntry(p));
     listEl.appendChild(card);
   }
 }
@@ -116,6 +125,8 @@ function openCreate() {
   fSku.disabled = false;
   fCategory.value = "General";
   fCurrency.value = "ARS";
+  fMinStock.value = 0;
+  setPhotoPreview("");
   hideError();
   dialog.showModal();
 }
@@ -131,8 +142,72 @@ function openEdit(p) {
   fPrice.value = p.price;
   fQuantity.value = p.quantity;
   fDescription.value = p.description || "";
+  fMinStock.value = p.min_stock || 0;
+  setPhotoPreview(p.photo_url || "");
   hideError();
   dialog.showModal();
+}
+
+function setPhotoPreview(url) {
+  removePhoto = false;
+  fPhoto.value = "";
+  if (url) {
+    photoPreview.src = url;
+    photoPreview.classList.remove("hidden");
+    photoRemove.classList.remove("hidden");
+  } else {
+    photoPreview.removeAttribute("src");
+    photoPreview.classList.add("hidden");
+    photoRemove.classList.add("hidden");
+  }
+}
+
+fPhoto.addEventListener("change", () => {
+  const file = fPhoto.files[0];
+  removePhoto = false;
+  if (!file) return;
+  photoPreview.src = URL.createObjectURL(file);
+  photoPreview.classList.remove("hidden");
+  photoRemove.classList.remove("hidden");
+});
+
+photoRemove.addEventListener("click", () => {
+  fPhoto.value = "";
+  photoPreview.removeAttribute("src");
+  photoPreview.classList.add("hidden");
+  photoRemove.classList.add("hidden");
+  removePhoto = true;
+});
+
+// Reduce la foto en el navegador (max 1200px, JPEG) antes de subirla
+function downscaleImage(file, maxSide = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo procesar la foto"))), "image/jpeg", quality);
+    };
+    img.onerror = () => reject(new Error("No se pudo leer la foto"));
+    img.src = url;
+  });
+}
+
+async function syncPhoto(sku) {
+  const file = fPhoto.files[0];
+  if (file) {
+    const blob = await downscaleImage(file);
+    const fd = new FormData();
+    fd.append("photo", blob, "foto.jpg");
+    await fetchJSON(`/api/products/${encodeURIComponent(sku)}/photo`, { method: "POST", body: fd });
+  } else if (removePhoto && editingSku) {
+    await fetchJSON(`/api/products/${encodeURIComponent(sku)}/photo`, { method: "DELETE" });
+  }
 }
 
 fabAdd.addEventListener("click", openCreate);
@@ -157,6 +232,7 @@ form.addEventListener("submit", async (e) => {
     price: parseFloat(fPrice.value),
     quantity: parseInt(fQuantity.value, 10),
     description: fDescription.value.trim(),
+    min_stock: parseInt(fMinStock.value, 10) || 0,
   };
 
   try {
@@ -176,6 +252,12 @@ form.addEventListener("submit", async (e) => {
   } catch (err) {
     showError(errorMessage(err));
     return;
+  }
+
+  try {
+    await syncPhoto(payload.sku);
+  } catch (err) {
+    toast("El producto se guardo pero la foto no: " + errorMessage(err), "error", 7000);
   }
 
   dialog.close();
@@ -270,3 +352,18 @@ importFile.addEventListener("change", async () => {
 });
 
 loadCategories().then(refresh);
+
+// Mostrar solo lo que el rol permite
+if (!can("stock.edit")) fabAdd.classList.add("hidden");
+if (!can("stock.import")) document.querySelectorAll(".import-row").forEach((el) => el.classList.add("hidden"));
+
+if (can("stock.import")) {
+  setupBulkImport({
+    button: "btn-import-entries",
+    fileInput: "import-entries-file",
+    url: "/api/stock-entries/import",
+    title: "Ingresos de stock",
+    noun: "movimientos de stock",
+    onDone: refresh,
+  });
+}

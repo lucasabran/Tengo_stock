@@ -1,14 +1,11 @@
 import os
-import secrets
 from datetime import datetime
 
-from flask import Flask, Response, request
+from flask import Flask
 
+import auth
 from db import close_db, init_db
-from blueprints import accounts, channels, customers, dashboard, expenses, movements, products, returns, sales
-
-STOCK_USER = os.environ.get("STOCK_USER", "admin")
-STOCK_PASSWORD = os.environ.get("STOCK_PASSWORD", "admin1234")
+from blueprints import accounts, admin, auth_bp, bulk, channels, customers, dashboard, expenses, movements, products, returns, sales
 
 app = Flask(__name__)
 app.teardown_appcontext(close_db)
@@ -38,25 +35,22 @@ app.register_blueprint(returns.bp)
 app.register_blueprint(expenses.bp)
 app.register_blueprint(movements.bp)
 app.register_blueprint(accounts.bp)
+app.register_blueprint(auth_bp.bp)
+app.register_blueprint(admin.bp)
+app.register_blueprint(bulk.bp)
+
+auth.install(app)
 
 
-@app.before_request
-def require_login():
-    auth = request.authorization
-    valid = (
-        auth is not None
-        and secrets.compare_digest(auth.username, STOCK_USER)
-        and secrets.compare_digest(auth.password, STOCK_PASSWORD)
-    )
-    if not valid:
-        return Response(
-            "Acceso restringido. Usuario y clave requeridos.",
-            401,
-            {"WWW-Authenticate": 'Basic realm="Stock"'},
-        )
+@app.route("/healthz", endpoint="healthcheck")
+def healthcheck():
+    return "ok"
+
 
 
 init_db()
+auth.seed_auth()
+app.secret_key = auth.load_secret_key()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("FLASK_DEBUG") == "1")

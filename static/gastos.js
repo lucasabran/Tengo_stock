@@ -37,13 +37,15 @@ function render(expenses) {
       <div class="card-bottom">
         <div></div>
         <div class="card-actions">
-          <button data-action="edit">Editar</button>
-          <button data-action="delete">Eliminar</button>
+          ${can("expenses.manage") ? '<button data-action="edit">Editar</button>' : ""}
+          ${can("expenses.delete") ? '<button data-action="delete">Eliminar</button>' : ""}
         </div>
       </div>
     `;
-    card.querySelector('[data-action="edit"]').addEventListener("click", () => openEdit(e));
-    card.querySelector('[data-action="delete"]').addEventListener("click", () => removeExpense(e));
+    const editBtn = card.querySelector('[data-action="edit"]');
+    if (editBtn) editBtn.addEventListener("click", () => openEdit(e));
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if (delBtn) delBtn.addEventListener("click", () => removeExpense(e));
     listEl.appendChild(card);
   }
 }
@@ -136,3 +138,17 @@ async function removeExpense(e) {
 }
 
 refresh();
+
+if (can("expenses.import")) {
+  setupBulkImport({
+    button: "btn-import",
+    fileInput: "import-file",
+    url: "/api/expenses/import",
+    title: "Importacion de gastos",
+    noun: "gastos",
+    onDone: refresh,
+  });
+} else {
+  document.getElementById("import-row").classList.add("hidden");
+}
+if (!can("expenses.manage")) fabAdd.classList.add("hidden");

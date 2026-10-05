@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 
 from db import get_db, now_iso
+import auth
 
 bp = Blueprint("returns", __name__)
 
@@ -134,8 +135,8 @@ def create_return():
     now = now_iso()
     try:
         cur = db.execute(
-            "INSERT INTO returns (sale_id, reason, note, created_at) VALUES (?, ?, ?, ?)",
-            (sale_id, reason, note, now),
+            "INSERT INTO returns (sale_id, reason, note, created_at, created_by) VALUES (?, ?, ?, ?, ?)",
+            (sale_id, reason, note, now, auth.actor()),
         )
         return_id = cur.lastrowid
 
@@ -149,9 +150,9 @@ def create_return():
                 (line["quantity"], now, line["sku"]),
             )
             db.execute(
-                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at) "
-                "VALUES (?, ?, 'devolucion', 'return', ?, ?)",
-                (line["sku"], line["quantity"], return_id, now),
+                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at, created_by) "
+                "VALUES (?, ?, 'devolucion', 'return', ?, ?, ?)",
+                (line["sku"], line["quantity"], return_id, now, auth.actor()),
             )
 
         db.commit()
@@ -159,5 +160,27 @@ def create_return():
         db.rollback()
         return jsonify({"error": "No se pudo registrar la devolucion", "details": [str(exc)]}), 409
 
+    auth.audit("devolucion_creada", "return", return_id, f"venta {sale_id}: {reason}")
     row = db.execute("SELECT * FROM returns WHERE id = ?", (return_id,)).fetchone()
     return jsonify(return_dict(row)), 201
+
+
+@bp.route("/api/returns/<int:return_id>", methods=["DELETE"])
+def delete_return(return_id):
+    from blueprints.sales import _revert_return_stock
+
+    db = get_db()
+    row = db.execute("SELECT * FROM returns WHERE id = ?", (return_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "devolucion no encontrada"}), 404
+    try:
+        problem = _revert_return_stock(db, return_id, now_iso())
+        if problem:
+            raise ValueError(problem)
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        return jsonify({"error": "No se pudo eliminar la devolucion", "details": [str(exc)]}), 409
+
+    auth.audit("devolucion_eliminada", "return", return_id, f"venta {row['sale_id']}: {row['reason']} - stock descontado de nuevo")
+    return jsonify({"ok": True})

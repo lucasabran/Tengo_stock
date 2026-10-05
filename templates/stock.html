@@ -12,7 +12,12 @@
     <a href="/api/products/template.csv">Descargar plantilla</a>
     <a href="/api/products/export.csv">Exportar stock</a>
   </div>
+  <div class="import-row">
+    <button id="btn-import-entries" type="button">Cargar ingresos de stock (Excel/CSV)</button>
+    <a href="/api/stock-entries/template.xlsx">Descargar plantilla de ingresos</a>
+  </div>
   <input type="file" id="import-file" accept=".csv,.xlsx,.xlsm" class="hidden">
+  <input type="file" id="import-entries-file" accept=".csv,.xlsx,.xlsm" class="hidden">
 </header>
 
 <main>
@@ -48,9 +53,18 @@
     <label>Cantidad
       <input name="quantity" id="f-quantity" type="number" step="1" min="0" required>
     </label>
+    <label>Stock minimo (avisa cuando baja de este numero)
+      <input name="min_stock" id="f-min-stock" type="number" step="1" min="0" value="0">
+    </label>
     <label>Descripcion
       <textarea name="description" id="f-description" rows="3"></textarea>
     </label>
+    <div class="photo-field">
+      <span>Foto del producto</span>
+      <img id="photo-preview" class="photo-preview hidden" alt="">
+      <input type="file" id="f-photo" accept="image/jpeg,image/png,image/webp">
+      <button type="button" id="photo-remove" class="btn-secondary hidden">Quitar foto</button>
+    </div>
     <div id="form-error" class="error hidden"></div>
     <div class="form-actions">
       <button type="button" id="form-cancel">Cancelar</button>

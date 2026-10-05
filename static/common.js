@@ -30,6 +30,9 @@ async function fetchJSON(url, options) {
   } catch (e) {
     data = null;
   }
+  if (res.status === 401) {
+    window.location.href = "/login";
+  }
   if (!res.ok) {
     const err = new Error((data && data.error) || `Error ${res.status}`);
     err.data = data;
@@ -100,5 +103,74 @@ function confirmDialog(message) {
       () => resolve(dialog.returnValue === "ok"),
       { once: true }
     );
+  });
+}
+
+function can(perm) {
+  return (window.PERMS || []).includes(perm);
+}
+
+function ensureResultDialog() {
+  let dialog = document.getElementById("import-result-dialog");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "import-result-dialog";
+    dialog.innerHTML = `
+      <form method="dialog" class="confirm-dialog-form">
+        <h2 id="import-result-title"></h2>
+        <div id="import-result-body"></div>
+        <div class="form-actions"><button type="submit" value="ok">Cerrar</button></div>
+      </form>
+    `;
+    document.body.appendChild(dialog);
+  }
+  return dialog;
+}
+
+function showImportResult(title, data, noun) {
+  const dialog = ensureResultDialog();
+  dialog.querySelector("#import-result-title").textContent = title;
+  let html = `<p class="import-ok">Se cargaron <strong>${data.created}</strong> ${noun}.</p>`;
+  if (data.created_channels && data.created_channels.length) {
+    html += `<p class="card-sku">Canales nuevos creados: ${data.created_channels.map(escapeHtml).join(", ")}</p>`;
+  }
+  if (data.created_customers && data.created_customers.length) {
+    html += `<p class="card-sku">Clientes nuevos creados: ${data.created_customers.length}</p>`;
+  }
+  if (data.error_count) {
+    html += `<p class="import-bad"><strong>${data.error_count}</strong> con problemas (esas NO se cargaron):</p><ul class="import-errors">`;
+    html += data.errors.map((e) => `<li>${escapeHtml(e)}</li>`).join("");
+    if (data.more_errors) html += `<li>... y ${data.more_errors} mas</li>`;
+    html += "</ul><p class=\"card-sku\">Corregi esas filas en el Excel y volve a importar solo esas.</p>";
+  }
+  dialog.querySelector("#import-result-body").innerHTML = html;
+  dialog.showModal();
+}
+
+// Conecta un boton + input file a un endpoint de importacion masiva
+function setupBulkImport({ button, fileInput, url, title, noun, extraFields, onDone }) {
+  const btn = document.getElementById(button);
+  const input = document.getElementById(fileInput);
+  if (!btn || !input) return;
+  btn.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
+    if (!input.files.length) return;
+    const fd = new FormData();
+    fd.append("file", input.files[0]);
+    if (extraFields) for (const [k, v] of Object.entries(extraFields())) fd.append(k, v);
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Importando...";
+    try {
+      const data = await fetchJSON(url, { method: "POST", body: fd });
+      showImportResult(title, data, noun);
+      if (onDone) onDone(data);
+    } catch (err) {
+      toast("Error al importar: " + errorMessage(err), "error", 9000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+      input.value = "";
+    }
   });
 }

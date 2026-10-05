@@ -10,6 +10,12 @@
     <input id="filter-to" type="date" title="Hasta">
     <a id="export-link" href="/api/sales/export.csv">Exportar</a>
   </div>
+  <div class="import-row" id="import-row">
+    <button id="btn-import" type="button">Importar ventas (Excel/CSV)</button>
+    <a href="/api/sales/template.xlsx">Descargar plantilla</a>
+    <label class="check-row"><input type="checkbox" id="deduct-stock" checked> Descontar stock</label>
+  </div>
+  <input type="file" id="import-file" accept=".csv,.xlsx,.xlsm" class="hidden">
 </header>
 
 <main>

@@ -177,6 +177,69 @@ def init_db():
     _ensure_column(db, "account_payments", "type", "type TEXT DEFAULT 'payment'")
 
     db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """
+    )
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS roles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT DEFAULT '',
+            permissions TEXT NOT NULL DEFAULT '',
+            is_system INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            full_name TEXT NOT NULL DEFAULT '',
+            password_hash TEXT NOT NULL,
+            role_id INTEGER REFERENCES roles(id),
+            is_owner INTEGER NOT NULL DEFAULT 0,
+            active INTEGER NOT NULL DEFAULT 1,
+            must_change_password INTEGER NOT NULL DEFAULT 0,
+            token_version INTEGER NOT NULL DEFAULT 1,
+            last_login TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL,
+            entity TEXT DEFAULT '',
+            entity_id TEXT DEFAULT '',
+            detail TEXT DEFAULT '',
+            ip TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.execute("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at)")
+
+    _ensure_column(db, "products", "photo", "photo TEXT DEFAULT ''")
+    _ensure_column(db, "products", "min_stock", "min_stock INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "sales", "stock_deducted", "stock_deducted INTEGER NOT NULL DEFAULT 1")
+    for table in ("sales", "returns", "expenses", "stock_movements", "account_payments"):
+        _ensure_column(db, table, "created_by", "created_by TEXT DEFAULT ''")
+
+    db.execute(
         "INSERT OR IGNORE INTO channels (name, type, active, created_at) VALUES (?, ?, 1, ?)",
         ("Mostrador", "mostrador", now_iso()),
     )
