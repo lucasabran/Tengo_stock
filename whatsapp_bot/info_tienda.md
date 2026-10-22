@@ -1,31 +1,53 @@
 # Información de Tengo Stock para el asistente de WhatsApp
-# Editá este archivo con los datos reales. Lo que diga [COMPLETAR] el bot lo trata
-# como desconocido y deriva a una persona. Reiniciá el bot después de editarlo.
+# Resumen de la web (Cómo comprar, Cambios y devoluciones, Preguntas frecuentes, banners), octubre 2026.
+# Si algo cambia en la web, actualizalo acá. Las líneas que empiezan con "# " no las lee el bot.
 
-Tienda: Tengo Stock — tecnología, electrodomésticos, climatización, hogar y cuidado personal.
+Tienda: TENGO STOCK ARG — tecnología, electrodomésticos, climatización, hogar y cuidado personal.
 Web: https://tengostockarg.com.ar
+Productos nuevos, originales y con garantía oficial del fabricante.
 
 ## Cómo se compra
-- La compra se hace en la web: el cliente abre el link del producto, toca COMPRAR y paga ahí.
-- Al tocar COMPRAR puede elegir "Extendé tu garantía": Sin extensión, 12, 24, 36 o 60 meses.
-  El precio de cada plan ya aparece en la web (y el bot lo puede informar).
+- En la web: abrir el link del producto, tocar COMPRAR (o "Agregar al carrito"), completar nombre,
+  teléfono, email y dirección, elegir envío y medio de pago, y confirmar con "Finalizar compra segura".
+- Al tocar COMPRAR se puede elegir "Extendé tu garantía": Sin extensión, 12, 24, 36 o 60 meses.
+- Después de comprar llega un email con el detalle del pedido. El pedido se prepara cuando se
+  acredita el pago, y cuando se despacha se envía el número de seguimiento.
+- Consejo para el cliente: revisar bien la dirección y el teléfono antes de confirmar.
 
 ## Pagos
-- 3 y 6 cuotas sin interés: [COMPLETAR: con qué tarjetas/bancos y desde qué monto]
-- Otros medios de pago: [COMPLETAR: transferencia, Mercado Pago, efectivo, descuento por transferencia, etc.]
+- Tarjetas de crédito y débito, transferencia bancaria, efectivo y billeteras virtuales
+  (todos los medios disponibles en Tiendanube).
+- 3 y 6 cuotas sin interés en miles de productos seleccionados, con tarjetas de crédito
+  Visa, Mastercard y American Express. La página de cada producto muestra sus cuotas
+  (por ejemplo "6 x $115.499 sin interés"), y en el pago aparecen todas las opciones de
+  financiación vigentes. Si preguntan por un banco o una cantidad de cuotas puntual, decí que
+  las opciones exactas se ven al pagar; no prometas planes que no estén acá.
 
-## Envíos
-- Envíos: [COMPLETAR: a qué zonas, con qué correo, cuánto tarda]
-- Envío gratis: [COMPLETAR: condiciones exactas, por ejemplo "CABA en productos seleccionados"]
-- Retiro en persona: [COMPLETAR: sí/no, dirección y horario]
+## Envíos y retiro
+- Envíos a toda Argentina con Correo Argentino y Andreani. El costo y el plazo estimado se ven
+  en la web antes de pagar, ingresando el código postal. El plazo depende de la zona.
+- Envío GRATIS en CABA con cualquier compra.
+- Retiro gratis en Villa del Parque (CABA) o Ramos Mejía, coordinando previamente.
+  (No des una dirección exacta: se coordina con el equipo.)
 
-## Garantía
-- Garantía oficial del fabricante: [COMPLETAR: plazo habitual]
-- Garantía extendida: opcional, se elige al comprar (12, 24, 36 o 60 meses).
-  Cobertura de la garantía extendida: [COMPLETAR: qué cubre y cómo se usa]
+## Factura
+- Emitimos factura A o B en todas las compras.
 
-## Atención humana
-- Horario: [COMPLETAR: por ejemplo lunes a viernes de 9 a 18 h]
+## Garantía, cambios y devoluciones
+- Todos los productos tienen garantía oficial del fabricante. Ante una falla de fabricación,
+  Tengo Stock ayuda a gestionar el servicio técnico.
+- Garantía extendida opcional: se elige al comprar (12, 24, 36 o 60 meses).
+- Producto dañado, incompleto o incorrecto: avisar dentro de las 48 horas corridas de recibido,
+  con número de pedido y fotos o videos del producto, el embalaje y el problema.
+- Conservar embalaje original, accesorios, manuales y factura hasta verificar que funciona.
+- No se aceptan devoluciones por mal uso, daños del usuario, mala instalación o faltantes de accesorios.
+- Reintegros por el mismo medio de pago; los plazos dependen del medio de pago.
+- Todo reclamo, cambio o devolución lo gestiona una persona del equipo: derivá.
+
+## Contacto y atención humana
+- WhatsApp: 11 3787-1154 · Email: info@tengostockarg.com.ar
+- Horario de atención: lunes a viernes de 9:00 a 17:00 h. Fuera de ese horario, al derivar,
+  avisá que el equipo responde el próximo día hábil.
 
 ## Promociones vigentes
 - Cupón BIENVENIDA: 5% OFF en la primera compra, para compras de más de $150.000. Sin vencimiento.
