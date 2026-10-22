@@ -3,3 +3,25 @@ __pycache__/
 *.pyc
 uploads/
 backups/
+
+# Claves y datos locales (nunca a GitHub: el repo es público)
+.env
+**/.env
+*.log
+*.err
+
+# tiendanube/: archivos generados o de trabajo
+tiendanube/cache_productos.json
+tiendanube/simulacion.txt
+tiendanube/feed_google_complementario.tsv
+tiendanube/*.csv
+tiendanube/categorias.json
+tiendanube/sin_categoria.json
+tiendanube/ocultos_sin_stock.json
+tiendanube/dia_madre_descuentos.json
+tiendanube/banner/*.jpg
+tiendanube/banner/*.webp
+tiendanube/pmax/*.jpg
+tiendanube/pmax/*.png
+tiendanube/pmax/*.webp
+tiendanube/pmax/*.json
