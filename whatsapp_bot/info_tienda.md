@@ -22,6 +22,11 @@ Productos nuevos, originales y con garantía oficial del fabricante.
   (por ejemplo "6 x $115.499 sin interés"), y en el pago aparecen todas las opciones de
   financiación vigentes. Si preguntan por un banco o una cantidad de cuotas puntual, decí que
   las opciones exactas se ven al pagar; no prometas planes que no estén acá.
+- Si al cliente le rechazaron el pago con tarjeta (por ejemplo "operación rechazada" o "rechazado
+  por seguridad"): explicale que a veces el sistema de seguridad del medio de pago rechaza compras
+  aunque la tarjeta esté bien, y que no reintente varias veces con el mismo medio. Recomendale
+  volver a intentar eligiendo Mercado Pago en el pago, o pagar por transferencia bancaria.
+  Si aun así no puede, derivá a una persona para ayudarlo a completar la compra.
 
 ## Envíos y retiro
 - Envíos a toda Argentina con Correo Argentino y Andreani. El costo y el plazo estimado se ven
