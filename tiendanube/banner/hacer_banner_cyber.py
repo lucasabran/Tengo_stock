@@ -1,4 +1,4 @@
-"""Banners CyberMonday (escritorio 1920x640 y celular 800x1000) para el carrusel de la home.
+"""Banners Cyber Week (escritorio 1920x640 y celular 800x1000) para el carrusel de la home.
 Sirven antes y durante el evento: dicen las fechas, no los códigos."""
 import os
 import sys
@@ -11,6 +11,8 @@ from hacer_recursos import recortar  # noqa: E402
 
 F = "C:/Windows/Fonts/"
 NEGRA, BOLD, SEMI = F + "seguibl.ttf", F + "segoeuib.ttf", F + "seguisb.ttf"
+EVENTO = ("CYBER", "WEEK")
+FECHAS = "DEL 2 AL 8 DE NOVIEMBRE"
 FONDO_1, FONDO_2 = (8, 12, 32), (18, 40, 110)
 AMARILLO, CELESTE, BLANCO = (255, 214, 0), (90, 200, 255), (255, 255, 255)
 FOTOS = [os.path.join(AQUI, "..", "pmax", f) for f in ("tv.jpg", "aire.jpg", "iphone.jpg", "lavarropas.jpg")]
@@ -76,9 +78,9 @@ def escritorio():
     img = fondo(W, H)
     d = ImageDraw.Draw(img)
     x = 250
-    d.text((x, 92), "2, 3 Y 4 DE NOVIEMBRE", font=fuente(BOLD, 30), fill=CELESTE)
-    d.text((x, 125), "CYBER", font=fuente(NEGRA, 118), fill=BLANCO)
-    d.text((x, 245), "MONDAY", font=fuente(NEGRA, 118), fill=AMARILLO)
+    d.text((x, 92), FECHAS, font=fuente(BOLD, 30), fill=CELESTE)
+    d.text((x, 125), EVENTO[0], font=fuente(NEGRA, 118), fill=BLANCO)
+    d.text((x, 245), EVENTO[1], font=fuente(NEGRA, 118), fill=AMARILLO)
     d.text((x, 400), "Hasta 10% OFF extra con tu código", font=fuente(SEMI, 34), fill=BLANCO)
     cx = x
     for t in ["3 y 6 cuotas sin interés", "Garantía extendida"]:
@@ -88,19 +90,19 @@ def escritorio():
     for ruta, (px, py) in zip(FOTOS, [(870, 100), (1110, 100), (870, 350), (1110, 350)]):
         c = tarjeta(ruta, lado - 10)
         img.paste(c, (px, py), c)
-    img.save(os.path.join(AQUI, "banner_cyber_escritorio.jpg"), quality=90)
+    img.save(os.path.join(AQUI, "banner_cyberweek_escritorio.jpg"), quality=90)
 
 
 def celular():
     W, H = 800, 1000
     img = fondo(W, H)
     d = ImageDraw.Draw(img)
-    d.text((W / 2, 64), "2, 3 Y 4 DE NOVIEMBRE", font=fuente(BOLD, 30), fill=CELESTE, anchor="mm")
-    f = fuente(NEGRA, 92)
-    total = d.textlength("CYBERMONDAY", font=f)
+    d.text((W / 2, 64), FECHAS, font=fuente(BOLD, 30), fill=CELESTE, anchor="mm")
+    f = fuente(NEGRA, 104)
+    total = d.textlength("".join(EVENTO), font=f)
     x0 = (W - total) / 2
-    d.text((x0, 150), "CYBER", font=f, fill=BLANCO, anchor="lm")
-    d.text((x0 + d.textlength("CYBER", font=f), 150), "MONDAY", font=f, fill=AMARILLO, anchor="lm")
+    d.text((x0, 150), EVENTO[0], font=f, fill=BLANCO, anchor="lm")
+    d.text((x0 + d.textlength(EVENTO[0], font=f), 150), EVENTO[1], font=f, fill=AMARILLO, anchor="lm")
     d.text((W / 2, 246), "Hasta 10% OFF extra", font=fuente(SEMI, 44), fill=BLANCO, anchor="mm")
     d.text((W / 2, 298), "con tu código · 3 y 6 cuotas sin interés", font=fuente(SEMI, 28), fill=CELESTE, anchor="mm")
     lado = 270
@@ -110,7 +112,7 @@ def celular():
     fb = fuente(BOLD, 30)
     w = d.textlength("VER OFERTAS  →", font=fb) + 80
     boton(d, (W - w) / 2, 906, "VER OFERTAS  →", fb)
-    img.save(os.path.join(AQUI, "banner_cyber_celular.jpg"), quality=90)
+    img.save(os.path.join(AQUI, "banner_cyberweek_celular.jpg"), quality=90)
 
 
 if __name__ == "__main__":

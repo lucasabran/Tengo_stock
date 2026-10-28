@@ -56,13 +56,17 @@ Productos nuevos, originales y con garantía oficial del fabricante.
 
 ## Promociones vigentes
 - Cupón BIENVENIDA: 5% OFF en la primera compra, para compras de más de $150.000. Sin vencimiento.
-- CyberMonday: lunes 2 al miércoles 4 de noviembre de 2026. Sección: https://tengostockarg.com.ar/cybermonday/
-  Cupones (válidos del domingo 1/11 a las 20 h al miércoles 4/11 a las 23:59, uno por compra):
+- CYBER WEEK: lunes 2 al domingo 8 de noviembre de 2026.
+  Landing: https://tengostockarg.com.ar/cyberweek/ · Todos los productos: https://tengostockarg.com.ar/cyber-week/
+  Secciones: Megaofertas (https://tengostockarg.com.ar/cyber-week/cyber-megaofertas/),
+  Novedades (.../cyber-week/cyber-novedades/), Tecno (.../cyber-week/cyber-tecno/),
+  Verano: aires y ventiladores (.../cyber-week/cyber-verano/), Electro, Cocina, Hogar y Cuidado personal.
+  Cupones (válidos del domingo 1/11 a las 20 h al domingo 8/11 a las 23:59, uno por compra):
   - CYBER5: 5% OFF en compras de más de $300.000
   - CYBER8: 8% OFF en compras de más de $800.000
   - CYBER10: 10% OFF en compras de más de $1.500.000
-  Antes del domingo 1/11 a las 20 h, no digas los códigos CYBER: contá que se vienen
-  "hasta 10% OFF extra según el monto de la compra" y recomendá usar BIENVENIDA si es su primera compra.
-  Además, del 2/11 al 4/11 los productos de la sección CYBERMONDAY tienen 5% OFF automático en el
-  carrito, sin código. No se suma con los cupones: el carrito aplica el mayor descuento disponible.
+  Además, del 2/11 al 8/11 los productos de la sección CYBER WEEK tienen 5% OFF automático en el
+  carrito, sin código.
+- Temporada: "Preparate para el verano" con aires acondicionados, ventiladores y climatizadores:
+  https://tengostockarg.com.ar/verano/
 - El cupón se ingresa en el carrito, antes de pagar. Los precios de lista no cambian.
