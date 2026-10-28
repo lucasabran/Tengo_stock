@@ -3,7 +3,17 @@
 {% block content %}
 <header>
   <h1>Clientes</h1>
-  <input id="search" type="search" placeholder="Buscar por nombre o telefono...">
+  <input id="search" type="search" placeholder="Buscar por nombre, telefono, mail o documento...">
+  <div class="filters-row">
+    <select id="filter-office"><option value="">Todas las oficinas</option></select>
+    <select id="filter-type">
+      <option value="">Minoristas y mayoristas</option>
+      <option value="minorista">Minoristas</option>
+      <option value="mayorista">Mayoristas</option>
+    </select>
+    <input id="filter-product" type="search" placeholder="Compro el producto...">
+    <a id="export-link" href="/api/customers/export.csv">Exportar clientes</a>
+  </div>
 </header>
 
 <main>
@@ -27,6 +37,28 @@
     <label>Documento
       <input name="doc_number" id="f-doc">
     </label>
+    <label>Domicilio
+      <input id="f-address" placeholder="Calle y numero">
+    </label>
+    <div class="field-row">
+      <label>Localidad
+        <input id="f-city">
+      </label>
+      <label>Provincia
+        <input id="f-province">
+      </label>
+    </div>
+    <div class="field-row">
+      <label>Oficina
+        <select id="f-office"><option value="">Sin asignar</option></select>
+      </label>
+      <label>Tipo de cliente
+        <select id="f-type">
+          <option value="minorista">Minorista</option>
+          <option value="mayorista">Mayorista</option>
+        </select>
+      </label>
+    </div>
     <label>Nota
       <textarea name="note" id="f-note" rows="2"></textarea>
     </label>
@@ -35,6 +67,14 @@
       <button type="button" id="form-cancel">Cancelar</button>
       <button type="submit">Guardar</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="purchases-dialog">
+  <form method="dialog" class="confirm-dialog-form">
+    <h2 id="purchases-title">Compras</h2>
+    <div id="purchases-body"></div>
+    <div class="form-actions"><button type="submit" value="ok">Cerrar</button></div>
   </form>
 </dialog>
 {% endblock %}

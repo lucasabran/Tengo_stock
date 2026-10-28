@@ -2,6 +2,7 @@ const usersListEl = document.getElementById("users-list");
 const rolesListEl = document.getElementById("roles-list");
 
 let roles = [];
+let offices = [];
 let catalog = [];
 let editingUserId = null;
 let editingRoleId = null;
@@ -45,6 +46,7 @@ function renderUsers(users) {
     row.className = "list-row user-row" + (u.active ? "" : " user-inactive");
     const badges = [
       u.is_owner ? '<span class="badge badge-owner">Dueño</span>' : `<span class="badge">${escapeHtml(u.role_name || "Sin rol")}</span>`,
+      u.office_name ? `<span class="badge badge-cond">${escapeHtml(u.office_name)}</span>` : "",
       u.active ? "" : '<span class="badge badge-off">Desactivado</span>',
       u.must_change_password ? '<span class="badge badge-warn">Debe cambiar clave</span>' : "",
     ].join(" ");
@@ -90,6 +92,11 @@ function openUser(user) {
   document.getElementById("u-fullname").value = user ? user.full_name : "";
   fillRoleSelect(user ? user.role_id : null);
   document.getElementById("u-role").disabled = !!(user && user.is_owner);
+  const officeSel = document.getElementById("u-office");
+  officeSel.innerHTML = '<option value="">Todas (administra todo el stock)</option>' +
+    offices.filter((o) => o.active).map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+  officeSel.value = user && user.office_id ? String(user.office_id) : "";
+  officeSel.disabled = !!(user && user.is_owner);
   document.getElementById("u-password-label").classList.toggle("hidden", !!user);
   const activeLabel = document.getElementById("u-active-label");
   activeLabel.classList.toggle("hidden", !user || user.is_owner);
@@ -106,6 +113,7 @@ userForm.addEventListener("submit", async (e) => {
   const body = {
     full_name: document.getElementById("u-fullname").value.trim(),
     role_id: Number(document.getElementById("u-role").value),
+    office_id: document.getElementById("u-office").value || null,
   };
   try {
     if (editingUserId) {
@@ -257,6 +265,7 @@ async function deleteRole(role) {
 
 (async function init() {
   catalog = await fetchJSON("/api/permissions");
+  offices = await fetchJSON("/api/offices");
   await loadRoles();
   await loadUsers();
 })();

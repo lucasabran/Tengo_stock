@@ -2,6 +2,7 @@ from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 from db import get_db, now_iso
 import auth
+import stock as stk
 from helpers import ACCOUNT_PAYMENT_METHOD, build_csv
 
 bp = Blueprint("sales", __name__)
@@ -23,14 +24,19 @@ def sale_summary_dict(row):
         "currency": row["currency"] or "ARS",
         "note": row["note"],
         "created_at": row["created_at"],
+        "office_id": row["office_id"],
+        "office_name": row["office_name"] or "",
+        "sale_type": row["sale_type"] or "minorista",
+        "created_by": row["created_by"] or "",
     }
 
 
 SUMMARY_QUERY = """
-    SELECT sales.*, channels.name AS channel_name, customers.name AS customer_name
+    SELECT sales.*, channels.name AS channel_name, customers.name AS customer_name, offices.name AS office_name
     FROM sales
     JOIN channels ON channels.id = sales.channel_id
     LEFT JOIN customers ON customers.id = sales.customer_id
+    LEFT JOIN offices ON offices.id = sales.office_id
 """
 
 
@@ -67,6 +73,17 @@ def sales_filters_from_request():
     if customer_id:
         where.append("sales.customer_id = ?")
         params.append(customer_id)
+
+    fixed_office = stk.user_office_id()
+    office_id = fixed_office or request.args.get("office_id")
+    if office_id:
+        where.append("sales.office_id = ?")
+        params.append(office_id)
+
+    sale_type = request.args.get("sale_type")
+    if sale_type in stk.SALE_TYPES:
+        where.append("sales.sale_type = ?")
+        params.append(sale_type)
 
     date_from = request.args.get("date_from")
     if date_from:
@@ -107,11 +124,13 @@ def export_sales():
 
     rows = db.execute(query, params).fetchall()
     content = build_csv(
-        ["numero", "fecha", "canal", "cliente", "forma_pago", "moneda", "subtotal", "descuento", "total", "nota"],
+        ["numero", "fecha", "oficina", "tipo", "canal", "cliente", "forma_pago", "moneda", "subtotal", "descuento", "total", "nota"],
         [
             [
                 f"V-{r['id']:06d}",
                 r["created_at"],
+                r["office_name"] or "",
+                r["sale_type"] or "minorista",
                 r["channel_name"],
                 r["customer_name"] or "",
                 r["payment_method"] or "",
@@ -135,7 +154,7 @@ def export_sales():
 def get_sale(sale_id):
     db = get_db()
     row = db.execute(SUMMARY_QUERY + " WHERE sales.id = ?", (sale_id,)).fetchone()
-    if not row:
+    if not row or (stk.user_office_id() and row["office_id"] != stk.user_office_id()):
         return jsonify({"error": "venta no encontrada"}), 404
 
     items = db.execute(
@@ -186,6 +205,9 @@ def create_sale():
         return jsonify({"error": "discount invalido"}), 400
 
     payment_method = str(data.get("payment_method", "")).strip()
+    sale_type = str(data.get("sale_type", "minorista")).strip().lower()
+    if sale_type not in stk.SALE_TYPES:
+        return jsonify({"error": "tipo de venta invalido (minorista o mayorista)"}), 400
     note = str(data.get("note", "")).strip()
     currency = str(data.get("currency", "ARS")).strip().upper()
     if currency not in ("ARS", "USD"):
@@ -196,6 +218,10 @@ def create_sale():
     channel = db.execute("SELECT 1 FROM channels WHERE id = ?", (channel_id,)).fetchone()
     if not channel:
         return jsonify({"error": "canal invalido"}), 400
+    office_id, office_err = stk.resolve_office(db, data.get("office_id"))
+    if office_err:
+        return jsonify({"error": office_err}), 400
+    office_name = db.execute("SELECT name FROM offices WHERE id = ?", (office_id,)).fetchone()["name"]
     if customer_id is not None:
         customer = db.execute("SELECT 1 FROM customers WHERE id = ?", (customer_id,)).fetchone()
         if not customer:
@@ -207,6 +233,7 @@ def create_sale():
     # Pre-check: read-only pass, collect every problem before writing anything
     lines = []
     errors = []
+    needed = {}
     for idx, item in enumerate(items_in):
         sku = str(item.get("sku", "")).strip()
         try:
@@ -222,12 +249,16 @@ def create_sale():
         if not product:
             errors.append(f"{sku}: producto no encontrado")
             continue
-        if product["quantity"] < quantity:
-            errors.append(f"{sku}: disponible {product['quantity']}, pedido {quantity}")
+        needed[sku] = needed.get(sku, 0) + quantity
+        available = stk.level(db, sku, office_id)
+        if available < needed[sku]:
+            errors.append(f"{sku}: disponible en {office_name} {available}, pedido {needed[sku]}")
             continue
 
         unit_price = item.get("unit_price")
-        unit_price = float(unit_price) if unit_price not in (None, "") else product["price"]
+        if unit_price in (None, ""):
+            unit_price = product["price_wholesale"] if sale_type == "mayorista" and (product["price_wholesale"] or 0) > 0 else product["price"]
+        unit_price = float(unit_price)
         lines.append(
             {
                 "sku": sku,
@@ -247,17 +278,13 @@ def create_sale():
 
     try:
         for line in lines:
-            cur = db.execute(
-                "UPDATE products SET quantity = quantity - ?, updated_at = ? WHERE sku = ? AND quantity >= ?",
-                (line["quantity"], now, line["sku"], line["quantity"]),
-            )
-            if cur.rowcount == 0:
-                raise ValueError(f"{line['sku']}: sin stock suficiente (venta concurrente)")
+            if not stk.adjust(db, line["sku"], office_id, -line["quantity"], now):
+                raise ValueError(f"{line['sku']}: sin stock suficiente en {office_name} (venta concurrente)")
 
         cur = db.execute(
             "INSERT INTO sales (channel_id, customer_id, status, subtotal, discount, total, "
-            "payment_method, currency, note, created_at, created_by) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)",
-            (channel_id, customer_id, subtotal, discount, total, payment_method, currency, note, now, auth.actor()),
+            "payment_method, currency, note, created_at, created_by, office_id, sale_type) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (channel_id, customer_id, subtotal, discount, total, payment_method, currency, note, now, auth.actor(), office_id, sale_type),
         )
         sale_id = cur.lastrowid
 
@@ -267,18 +294,14 @@ def create_sale():
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (sale_id, line["sku"], line["product_name"], line["unit_price"], line["quantity"], line["line_total"]),
             )
-            db.execute(
-                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at, created_by) "
-                "VALUES (?, ?, 'venta', 'sale', ?, ?, ?)",
-                (line["sku"], -line["quantity"], sale_id, now, auth.actor()),
-            )
+            stk.record_movement(db, line["sku"], office_id, -line["quantity"], "venta", "", "sale", sale_id, now, auth.actor())
 
         db.commit()
     except Exception as exc:
         db.rollback()
         return jsonify({"error": "No se pudo registrar la venta", "details": [str(exc)]}), 409
 
-    auth.audit("venta_creada", "sale", sale_id, f"{currency} {total:,.2f} - {len(lines)} item(s)")
+    auth.audit("venta_creada", "sale", sale_id, f"{currency} {total:,.2f} - {len(lines)} item(s) - {office_name} ({sale_type})")
 
     row = db.execute(SUMMARY_QUERY + " WHERE sales.id = ?", (sale_id,)).fetchone()
     return jsonify(sale_summary_dict(row)), 201
@@ -288,7 +311,7 @@ def create_sale():
 def comprobante(sale_id):
     db = get_db()
     row = db.execute(SUMMARY_QUERY + " WHERE sales.id = ?", (sale_id,)).fetchone()
-    if not row:
+    if not row or (stk.user_office_id() and row["office_id"] != stk.user_office_id()):
         abort(404)
     items = db.execute(
         "SELECT * FROM sale_items WHERE sale_id = ? ORDER BY id", (sale_id,)
@@ -302,12 +325,12 @@ def _revert_return_stock(db, return_id, now):
         "SELECT ri.quantity, si.sku FROM return_items ri JOIN sale_items si ON si.id = ri.sale_item_id WHERE ri.return_id = ?",
         (return_id,),
     ).fetchall()
+    office_row = db.execute(
+        "SELECT sales.office_id FROM returns JOIN sales ON sales.id = returns.sale_id WHERE returns.id = ?", (return_id,)
+    ).fetchone()
+    office_id = (office_row["office_id"] if office_row else None) or stk.default_office_id(db)
     for it in items:
-        cur = db.execute(
-            "UPDATE products SET quantity = quantity - ?, updated_at = ? WHERE sku = ? AND quantity >= ?",
-            (it["quantity"], now, it["sku"], it["quantity"]),
-        )
-        if cur.rowcount == 0:
+        if not stk.adjust(db, it["sku"], office_id, -it["quantity"], now):
             return f"{it['sku']}: no hay stock suficiente para deshacer la devolucion (ya se vendio)"
     db.execute("DELETE FROM stock_movements WHERE reference_type = 'return' AND reference_id = ?", (return_id,))
     db.execute("DELETE FROM return_items WHERE return_id = ?", (return_id,))
@@ -331,11 +354,9 @@ def delete_sale(sale_id):
                 raise ValueError(problem)
         # despues se repone el stock que desconto la venta
         if sale["stock_deducted"]:
+            office_id = sale["office_id"] or stk.default_office_id(db)
             for it in db.execute("SELECT sku, quantity FROM sale_items WHERE sale_id = ?", (sale_id,)).fetchall():
-                db.execute(
-                    "UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE sku = ?",
-                    (it["quantity"], now, it["sku"]),
-                )
+                stk.adjust(db, it["sku"], office_id, it["quantity"], now)
         db.execute("DELETE FROM stock_movements WHERE reference_type = 'sale' AND reference_id = ?", (sale_id,))
         db.execute("DELETE FROM sale_items WHERE sale_id = ?", (sale_id,))
         db.execute("DELETE FROM sales WHERE id = ?", (sale_id,))

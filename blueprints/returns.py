@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, render_template, request
 
 from db import get_db, now_iso
 import auth
+import stock as stk
 
 bp = Blueprint("returns", __name__)
 
@@ -90,9 +91,10 @@ def create_return():
     note = str(data.get("note", "")).strip()
 
     db = get_db()
-    sale = db.execute("SELECT id FROM sales WHERE id = ?", (sale_id,)).fetchone()
-    if not sale:
+    sale = db.execute("SELECT id, office_id FROM sales WHERE id = ?", (sale_id,)).fetchone()
+    if not sale or (stk.user_office_id() and sale["office_id"] != stk.user_office_id()):
         return jsonify({"error": "venta no encontrada"}), 404
+    sale_office = sale["office_id"] or stk.default_office_id(db)
 
     lines = []
     errors = []
@@ -145,15 +147,8 @@ def create_return():
                 "INSERT INTO return_items (return_id, sale_item_id, quantity) VALUES (?, ?, ?)",
                 (return_id, line["sale_item_id"], line["quantity"]),
             )
-            db.execute(
-                "UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE sku = ?",
-                (line["quantity"], now, line["sku"]),
-            )
-            db.execute(
-                "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at, created_by) "
-                "VALUES (?, ?, 'devolucion', 'return', ?, ?, ?)",
-                (line["sku"], line["quantity"], return_id, now, auth.actor()),
-            )
+            stk.adjust(db, line["sku"], sale_office, line["quantity"], now)
+            stk.record_movement(db, line["sku"], sale_office, line["quantity"], "devolucion", "", "return", return_id, now, auth.actor())
 
         db.commit()
     except Exception as exc:

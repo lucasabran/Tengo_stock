@@ -28,7 +28,30 @@ def close_db(exception=None):
         db.close()
 
 
+def _backup_before_migration():
+    """Si la base existente es de una version anterior (con datos y sin oficinas), guarda una copia
+    completa en backups/ ANTES de tocar nada. Queda en el mismo disco persistente que la base."""
+    import shutil
+
+    path = Path(DB_PATH)
+    if not path.exists() or path.stat().st_size == 0:
+        return
+    probe = sqlite3.connect(path)
+    try:
+        tables = {r[0] for r in probe.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if "products" not in tables or "offices" in tables:
+            return
+    finally:
+        probe.close()
+    backup_dir = path.parent / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    target = backup_dir / f"antes-de-migrar-oficinas-{datetime.now():%Y%m%d-%H%M%S}.db"
+    shutil.copy2(path, target)
+    print(f"Copia de seguridad previa a la migracion: {target}")
+
+
 def init_db():
+    _backup_before_migration()
     db = sqlite3.connect(DB_PATH)
     db.execute("PRAGMA foreign_keys = ON")
 
@@ -238,6 +261,53 @@ def init_db():
     _ensure_column(db, "sales", "stock_deducted", "stock_deducted INTEGER NOT NULL DEFAULT 1")
     for table in ("sales", "returns", "expenses", "stock_movements", "account_payments"):
         _ensure_column(db, table, "created_by", "created_by TEXT DEFAULT ''")
+
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS offices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS stock_levels (
+            sku TEXT NOT NULL REFERENCES products(sku),
+            office_id INTEGER NOT NULL REFERENCES offices(id),
+            quantity INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (sku, office_id)
+        )
+        """
+    )
+
+    _ensure_column(db, "products", "condition", "condition TEXT NOT NULL DEFAULT 'Nuevo'")
+    _ensure_column(db, "products", "price_wholesale", "price_wholesale REAL NOT NULL DEFAULT 0")
+    _ensure_column(db, "stock_movements", "office_id", "office_id INTEGER")
+    _ensure_column(db, "sales", "office_id", "office_id INTEGER")
+    _ensure_column(db, "sales", "sale_type", "sale_type TEXT NOT NULL DEFAULT 'minorista'")
+    _ensure_column(db, "customers", "address", "address TEXT DEFAULT ''")
+    _ensure_column(db, "customers", "city", "city TEXT DEFAULT ''")
+    _ensure_column(db, "customers", "province", "province TEXT DEFAULT ''")
+    _ensure_column(db, "customers", "office_id", "office_id INTEGER")
+    _ensure_column(db, "customers", "customer_type", "customer_type TEXT NOT NULL DEFAULT 'minorista'")
+    _ensure_column(db, "users", "office_id", "office_id INTEGER")
+
+    # Primera oficina y reparto inicial del stock existente (solo la primera vez)
+    if db.execute("SELECT COUNT(*) FROM offices").fetchone()[0] == 0:
+        db.execute("INSERT INTO offices (name, active, created_at) VALUES ('Villanova', 1, ?)", (now_iso(),))
+    default_office = db.execute("SELECT MIN(id) FROM offices").fetchone()[0]
+    db.execute(
+        "INSERT INTO stock_levels (sku, office_id, quantity) "
+        "SELECT sku, ?, quantity FROM products "
+        "WHERE quantity != 0 AND sku NOT IN (SELECT sku FROM stock_levels)",
+        (default_office,),
+    )
+    db.execute("UPDATE stock_movements SET office_id = ? WHERE office_id IS NULL", (default_office,))
+    db.execute("UPDATE sales SET office_id = ? WHERE office_id IS NULL", (default_office,))
 
     db.execute(
         "INSERT OR IGNORE INTO channels (name, type, active, created_at) VALUES (?, ?, 1, ?)",

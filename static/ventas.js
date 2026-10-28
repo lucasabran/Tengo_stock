@@ -4,6 +4,22 @@ const channelEl = document.getElementById("filter-channel");
 const fromEl = document.getElementById("filter-from");
 const toEl = document.getElementById("filter-to");
 const exportLink = document.getElementById("export-link");
+const officeEl = document.getElementById("filter-office");
+const typeEl = document.getElementById("filter-type");
+
+async function loadOffices() {
+  const offices = await fetchJSON("/api/offices");
+  if (window.USER_OFFICE) {
+    officeEl.classList.add("hidden");
+    return;
+  }
+  for (const o of offices) {
+    const opt = document.createElement("option");
+    opt.value = o.id;
+    opt.textContent = o.name;
+    officeEl.appendChild(opt);
+  }
+}
 
 async function loadChannels() {
   const channels = await fetchJSON("/api/channels");
@@ -28,7 +44,7 @@ function render(sales) {
     row.innerHTML = `
       <div>
         <div class="list-row-title">${escapeHtml(s.number)} &middot; ${escapeHtml(s.channel_name)}</div>
-        <div class="list-row-sub">${escapeHtml(s.customer_name || "Sin cliente")} &middot; ${formatDateTime(s.created_at)}</div>
+        <div class="list-row-sub">${escapeHtml(s.customer_name || "Sin cliente")} &middot; ${formatDateTime(s.created_at)}${s.office_name ? " &middot; " + escapeHtml(s.office_name) : ""}${s.sale_type === "mayorista" ? " &middot; Mayorista" : ""}${s.created_by ? " &middot; " + escapeHtml(s.created_by) : ""}</div>
       </div>
       <div class="list-row-amount">${money(s.total, s.currency)}</div>
     `;
@@ -40,6 +56,8 @@ async function refresh() {
   const params = new URLSearchParams();
   if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
   if (channelEl.value) params.set("channel_id", channelEl.value);
+  if (officeEl.value) params.set("office_id", officeEl.value);
+  if (typeEl.value) params.set("sale_type", typeEl.value);
   if (fromEl.value) params.set("date_from", fromEl.value);
   if (toEl.value) params.set("date_to", toEl.value);
   exportLink.href = `/api/sales/export.csv?${params.toString()}`;
@@ -53,10 +71,12 @@ searchEl.addEventListener("input", () => {
   searchTimer = setTimeout(refresh, 250);
 });
 channelEl.addEventListener("change", refresh);
+officeEl.addEventListener("change", refresh);
+typeEl.addEventListener("change", refresh);
 fromEl.addEventListener("change", refresh);
 toEl.addEventListener("change", refresh);
 
-loadChannels().then(refresh);
+Promise.all([loadChannels(), loadOffices()]).then(refresh);
 
 if (can("sales.import")) {
   setupBulkImport({

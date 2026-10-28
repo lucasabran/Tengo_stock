@@ -131,6 +131,7 @@ function showImportResult(title, data, noun) {
   const dialog = ensureResultDialog();
   dialog.querySelector("#import-result-title").textContent = title;
   let html = `<p class="import-ok">Se cargaron <strong>${data.created}</strong> ${noun}.</p>`;
+  if (data.updated) html += `<p class="import-ok"><strong>${data.updated}</strong> productos que ya existian se actualizaron.</p>`;
   if (data.created_channels && data.created_channels.length) {
     html += `<p class="card-sku">Canales nuevos creados: ${data.created_channels.map(escapeHtml).join(", ")}</p>`;
   }

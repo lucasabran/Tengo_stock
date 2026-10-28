@@ -7,6 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 import auth
+import stock as stk
 from db import get_db, now_iso
 from helpers import (
     ACCOUNT_PAYMENT_METHOD,
@@ -118,7 +119,7 @@ def summarize(created, errors, extra=None):
 def sales_template():
     return template_response(
         "plantilla_ventas.xlsx",
-        ["venta", "fecha", "canal", "cliente", "sku", "cantidad", "precio", "moneda", "medio_de_pago", "descuento", "nota"],
+        ["venta", "fecha", "oficina", "tipo_de_venta", "canal", "cliente", "sku", "cantidad", "precio", "moneda", "medio_de_pago", "descuento", "nota"],
         [
             "Plantilla de carga masiva de VENTAS",
             "",
@@ -127,6 +128,8 @@ def sales_template():
             "",
             "venta: numero o codigo para agrupar las filas de una misma venta (opcional).",
             "fecha: dd/mm/aaaa (opcional, si esta vacia se usa hoy).",
+            "oficina: de que oficina sale el stock (opcional, vacia = tu oficina o la principal).",
+            "tipo_de_venta: minorista o mayorista (opcional, vacia = minorista). Si mayorista y no hay precio, usa el precio mayorista.",
             "canal: nombre del canal (Mostrador, Mercado Libre, Tienda Nube, Instagram...). Vacio = Mostrador. Si no existe, se crea.",
             "cliente: nombre del cliente (opcional). Si no existe, se crea. Obligatorio si el medio de pago es 'Cuenta corriente'.",
             "sku: codigo del producto. Tiene que existir en Stock.",
@@ -176,6 +179,17 @@ def import_sales():
         created_at = f"{sale_date}T12:00:00" if sale_date else now
 
         channel_name = clean(first.get("channel")) or "Mostrador"
+        sale_type = clean(first.get("sale_type")).lower() or "minorista"
+        if sale_type not in stk.SALE_TYPES:
+            errors.append(f"{label}: tipo de venta invalido ({sale_type})")
+            continue
+        office_id, office_err = stk.resolve_office(db, None)
+        office_name = clean(first.get("office"))
+        if office_name and not stk.user_office_id():
+            office_id = stk.office_by_name(db, office_name)
+            if not office_id:
+                errors.append(f"{label}: la oficina '{office_name}' no existe")
+                continue
         customer_name = clean(first.get("customer"))
         payment_method = clean(first.get("payment_method"))
         note = clean(first.get("note"))
@@ -211,11 +225,13 @@ def import_sales():
                 problems.append(f"fila {pos}: el producto {sku} no existe en Stock")
                 continue
             needed[sku] = needed.get(sku, 0) + qty
-            if deduct and product["quantity"] < needed[sku]:
-                problems.append(f"fila {pos}: {sku} tiene {product['quantity']} en stock y se piden {needed[sku]}")
+            available = stk.level(db, sku, office_id)
+            if deduct and available < needed[sku]:
+                problems.append(f"fila {pos}: {sku} tiene {available} en esa oficina y se piden {needed[sku]}")
                 continue
             try:
-                unit_price = parse_number(row.get("price")) if clean(row.get("price")) else product["price"]
+                default_price = product["price_wholesale"] if sale_type == "mayorista" and (product["price_wholesale"] or 0) > 0 else product["price"]
+                unit_price = parse_number(row.get("price")) if clean(row.get("price")) else default_price
             except ValueError:
                 problems.append(f"fila {pos}: precio invalido")
                 continue
@@ -254,9 +270,9 @@ def import_sales():
         subtotal = round(sum(l["total"] for l in lines), 2)
         sale_id = db.execute(
             "INSERT INTO sales (channel_id, customer_id, status, subtotal, discount, total, payment_method, currency, note, "
-            "created_at, created_by, stock_deducted) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "created_at, created_by, stock_deducted, office_id, sale_type) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (channel_id, customer_id, subtotal, discount, round(subtotal - discount, 2), payment_method, currency or "ARS",
-             note, created_at, auth.actor(), 1 if deduct else 0),
+             note, created_at, auth.actor(), 1 if deduct else 0, office_id, sale_type),
         ).lastrowid
         for l in lines:
             db.execute(
@@ -264,12 +280,8 @@ def import_sales():
                 (sale_id, l["sku"], l["name"], l["price"], l["qty"], l["total"]),
             )
             if deduct:
-                db.execute("UPDATE products SET quantity = quantity - ?, updated_at = ? WHERE sku = ?", (l["qty"], now, l["sku"]))
-                db.execute(
-                    "INSERT INTO stock_movements (sku, change_qty, reason, reference_type, reference_id, created_at, created_by) "
-                    "VALUES (?, ?, 'venta', 'sale', ?, ?, ?)",
-                    (l["sku"], -l["qty"], sale_id, created_at, auth.actor()),
-                )
+                stk.adjust(db, l["sku"], office_id, -l["qty"], now)
+                stk.record_movement(db, l["sku"], office_id, -l["qty"], "venta", "", "sale", sale_id, created_at, auth.actor())
         created += 1
 
     db.commit()
@@ -338,7 +350,7 @@ def import_expenses():
 def stock_entries_template():
     return template_response(
         "plantilla_ingresos_stock.xlsx",
-        ["sku", "cantidad", "motivo", "nota"],
+        ["sku", "cantidad", "oficina", "motivo", "nota"],
         [
             "Plantilla de carga masiva de INGRESOS DE STOCK",
             "",
@@ -346,6 +358,7 @@ def stock_entries_template():
             "Para crear productos nuevos usa 'Importar stock' (con nombre, precio, categoria).",
             "",
             "sku: codigo del producto (obligatorio, tiene que existir).",
+            "oficina: a que oficina entra (opcional, vacia = tu oficina o la principal).",
             "cantidad: unidades que ENTRAN. Con signo menos (-3) se descuentan.",
             "motivo: compra_proveedor, ajuste_inventario, ajuste_manual, devolucion_proveedor u otro. Vacio = compra_proveedor.",
             "nota: ej. 'Factura 123 - Proveedor X' (opcional).",
@@ -384,15 +397,19 @@ def import_stock_entries():
         if not product:
             errors.append(f"fila {pos}: el producto {sku} no existe en Stock")
             continue
-        if product["quantity"] + qty < 0:
-            errors.append(f"fila {pos}: {sku} tiene {product['quantity']} y no se pueden restar {-qty}")
+        office_id, _ = stk.resolve_office(db, None)
+        office_name = clean(row.get("office"))
+        if office_name and not stk.user_office_id():
+            office_id = stk.office_by_name(db, office_name)
+            if not office_id:
+                errors.append(f"fila {pos}: la oficina '{office_name}' no existe")
+                continue
+        available = stk.level(db, sku, office_id)
+        if available + qty < 0:
+            errors.append(f"fila {pos}: {sku} tiene {available} en esa oficina y no se pueden restar {-qty}")
             continue
-        db.execute("UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE sku = ?", (qty, now, sku))
-        db.execute(
-            "INSERT INTO stock_movements (sku, change_qty, reason, note, reference_type, reference_id, created_at, created_by) "
-            "VALUES (?, ?, ?, ?, '', NULL, ?, ?)",
-            (sku, qty, reason, clean(row.get("note")), now, auth.actor()),
-        )
+        stk.adjust(db, sku, office_id, qty, now)
+        stk.record_movement(db, sku, office_id, qty, reason, clean(row.get("note")), "", None, now, auth.actor())
         created += 1
 
     db.commit()

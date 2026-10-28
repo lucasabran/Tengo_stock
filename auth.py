@@ -18,6 +18,8 @@ PERMISSIONS = [
     ("Stock", "stock.view", "Ver productos y stock"),
     ("Stock", "stock.edit", "Crear/editar productos y cargar stock"),
     ("Stock", "stock.delete", "Eliminar productos"),
+    ("Stock", "stock.transfer", "Transferir stock entre oficinas"),
+    ("Stock", "stock.rename", "Cambiar el SKU de un producto"),
     ("Stock", "stock.import", "Importar y exportar productos (CSV/Excel)"),
     ("Stock", "movements.view", "Ver historial de movimientos de stock"),
     ("Ventas", "sales.view", "Ver ventas y comprobantes"),
@@ -37,6 +39,7 @@ PERMISSIONS = [
     ("Gastos", "expenses.import", "Cargar gastos masivamente desde Excel"),
     ("Gastos", "expenses.delete", "Eliminar gastos"),
     ("Configuracion", "channels.manage", "Editar y desactivar canales de venta"),
+    ("Configuracion", "offices.manage", "Administrar oficinas"),
     ("Configuracion", "audit.view", "Ver el registro de actividad"),
 ]
 PERMISSION_KEYS = [p[1] for p in PERMISSIONS]
@@ -58,6 +61,14 @@ ENDPOINT_PERMS = {
     "products.update_product": ("stock.edit",),
     "products.add_stock": ("stock.edit",),
     "products.upload_photo": ("stock.edit",),
+    "products.rename_sku": ("stock.rename",),
+    "products.transfer_stock": ("stock.transfer",),
+    "customers.customer_purchases": ("customers.view",),
+    "customers.export_customers": ("customers.view",),
+    "offices.offices_page": ("offices.manage",),
+    "offices.list_offices": ("stock.view", "sales.view", "sales.create", "customers.view", "customers.manage", "movements.view", "offices.manage"),
+    "offices.create_office": ("offices.manage",),
+    "offices.update_office": ("offices.manage",),
     "products.delete_photo": ("stock.edit",),
     "products.product_photo": ("stock.view", "sales.create", "sales.view"),
     "products.download_template": ("stock.import",),
@@ -128,6 +139,7 @@ NAV_ITEMS = [
     ("ventas", "Ventas", "/ventas", ("sales.view", "sales.create")),
     ("devoluciones", "Devoluciones", "/devoluciones", ("returns.view",)),
     ("gastos", "Gastos", "/gastos", ("expenses.view",)),
+    ("oficinas", "Oficinas", "/oficinas", ("offices.manage",)),
     ("clientes", "Clientes", "/clientes", ("customers.view",)),
     ("cuentas", "Cuentas corrientes", "/cuentas", ("accounts.view",)),
     ("actividad", "Actividad", "/actividad", ("audit.view",)),
@@ -402,7 +414,12 @@ def install(app):
         ]
         if user and user["is_owner"]:
             nav.append({"key": "usuarios", "label": "Usuarios y roles", "url": "/usuarios"})
-        return {"current_user": user, "nav_items": nav, "user_perms": sorted(perms)}
+        return {
+            "current_user": user,
+            "nav_items": nav,
+            "user_perms": sorted(perms),
+            "user_office_id": user["office_id"] if user else None,
+        }
 
     @app.after_request
     def security_headers(resp):

@@ -12,6 +12,48 @@ const fPhone = document.getElementById("f-phone");
 const fEmail = document.getElementById("f-email");
 const fDoc = document.getElementById("f-doc");
 const fNote = document.getElementById("f-note");
+const fAddress = document.getElementById("f-address");
+const fCity = document.getElementById("f-city");
+const fProvince = document.getElementById("f-province");
+const fOffice = document.getElementById("f-office");
+const fType = document.getElementById("f-type");
+const officeFilterEl = document.getElementById("filter-office");
+const typeFilterEl = document.getElementById("filter-type");
+const productFilterEl = document.getElementById("filter-product");
+const exportLink = document.getElementById("export-link");
+let offices = [];
+
+async function loadOffices() {
+  offices = (await fetchJSON("/api/offices")).filter((o) => o.active);
+  for (const o of offices) {
+    officeFilterEl.insertAdjacentHTML("beforeend", `<option value="${o.id}">${escapeHtml(o.name)}</option>`);
+    fOffice.insertAdjacentHTML("beforeend", `<option value="${o.id}">${escapeHtml(o.name)}</option>`);
+  }
+}
+
+function filterParams() {
+  const params = new URLSearchParams();
+  if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+  if (officeFilterEl.value) params.set("office_id", officeFilterEl.value);
+  if (typeFilterEl.value) params.set("customer_type", typeFilterEl.value);
+  if (productFilterEl.value.trim()) params.set("product", productFilterEl.value.trim());
+  return params.toString();
+}
+
+async function showPurchases(c) {
+  document.getElementById("purchases-title").textContent = `Compras de ${c.name}`;
+  const body = document.getElementById("purchases-body");
+  body.innerHTML = "<p class=\"card-sku\">Cargando...</p>";
+  document.getElementById("purchases-dialog").showModal();
+  const rows = await fetchJSON(`/api/customers/${c.id}/purchases`);
+  if (!rows.length) {
+    body.innerHTML = "<p class=\"card-sku\">Todavia no compro ningun producto.</p>";
+    return;
+  }
+  body.innerHTML = `<table class="purchases-table"><thead><tr><th>Producto</th><th>Cant.</th><th>Veces</th><th>Total</th><th>Ultima</th></tr></thead><tbody>${rows
+    .map((r) => `<tr><td>${escapeHtml(r.product_name)}<div class="card-sku">SKU ${escapeHtml(r.sku)}</div></td><td>${r.quantity}</td><td>${r.purchases}</td><td>${money(r.total, r.currency)}</td><td>${formatDate((r.last_date || "").slice(0, 10))}</td></tr>`)
+    .join("")}</tbody></table>`;
+}
 
 let editingId = null;
 
@@ -24,12 +66,14 @@ function render(customers) {
   for (const c of customers) {
     const card = document.createElement("div");
     card.className = "card";
-    const contact = [c.phone, c.email].filter(Boolean).join(" &middot; ");
+    const contact = [c.phone, c.email].filter(Boolean).map(escapeHtml).join(" &middot; ");
+    const place = [c.address, c.city, c.province].filter(Boolean).map(escapeHtml).join(", ");
     card.innerHTML = `
       <div class="card-top">
         <div>
-          <div class="card-name">${escapeHtml(c.name)}</div>
+          <div class="card-name">${escapeHtml(c.name)} ${c.customer_type === "mayorista" ? '<span class="badge badge-type">Mayorista</span>' : ""} ${c.office_name ? `<span class="badge">${escapeHtml(c.office_name)}</span>` : ""}</div>
           ${contact ? `<div class="card-sku">${contact}</div>` : ""}
+          ${place ? `<div class="card-sku">${place}</div>` : ""}
         </div>
         <div class="card-price">${c.purchase_count > 0 ? money(c.total_spent) : ""}</div>
       </div>
@@ -38,21 +82,23 @@ function render(customers) {
       <div class="card-bottom">
         <div></div>
         <div class="card-actions">
-          <button data-action="edit">Editar</button>
-          <button data-action="delete">Eliminar</button>
+          <button data-action="purchases">Compras</button>
+          ${can("customers.manage") ? '<button data-action="edit">Editar</button><button data-action="delete">Eliminar</button>' : ""}
         </div>
       </div>
     `;
-    card.querySelector('[data-action="edit"]').addEventListener("click", () => openEdit(c));
-    card.querySelector('[data-action="delete"]').addEventListener("click", () => removeCustomer(c));
+    card.querySelector('[data-action="purchases"]').addEventListener("click", () => showPurchases(c));
+    const editBtn = card.querySelector('[data-action="edit"]');
+    if (editBtn) editBtn.addEventListener("click", () => openEdit(c));
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if (delBtn) delBtn.addEventListener("click", () => removeCustomer(c));
     listEl.appendChild(card);
   }
 }
 
 async function refresh() {
-  const q = searchEl.value.trim();
-  const customers = await fetchJSON(q ? `/api/customers?q=${encodeURIComponent(q)}` : "/api/customers");
-  render(customers);
+  exportLink.href = `/api/customers/export.csv?${filterParams()}`;
+  render(await fetchJSON(`/api/customers?${filterParams()}`));
 }
 
 let searchTimer;
@@ -60,11 +106,19 @@ searchEl.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(refresh, 250);
 });
+productFilterEl.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(refresh, 250);
+});
+officeFilterEl.addEventListener("change", refresh);
+typeFilterEl.addEventListener("change", refresh);
 
 function openCreate() {
   editingId = null;
   formTitle.textContent = "Nuevo cliente";
   form.reset();
+  fOffice.value = "";
+  fType.value = "minorista";
   hideError();
   dialog.showModal();
 }
@@ -77,6 +131,11 @@ function openEdit(c) {
   fEmail.value = c.email || "";
   fDoc.value = c.doc_number || "";
   fNote.value = c.note || "";
+  fAddress.value = c.address || "";
+  fCity.value = c.city || "";
+  fProvince.value = c.province || "";
+  fOffice.value = c.office_id ? String(c.office_id) : "";
+  fType.value = c.customer_type || "minorista";
   hideError();
   dialog.showModal();
 }
@@ -101,6 +160,11 @@ form.addEventListener("submit", async (e) => {
     email: fEmail.value.trim(),
     doc_number: fDoc.value.trim(),
     note: fNote.value.trim(),
+    address: fAddress.value.trim(),
+    city: fCity.value.trim(),
+    province: fProvince.value.trim(),
+    office_id: fOffice.value || null,
+    customer_type: fType.value,
   };
 
   try {
@@ -139,4 +203,5 @@ async function removeCustomer(c) {
   refresh();
 }
 
-refresh();
+loadOffices().then(refresh);
+if (!can("customers.manage")) fabAdd.classList.add("hidden");

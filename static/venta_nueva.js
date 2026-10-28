@@ -15,6 +15,11 @@ const productResults = document.getElementById("product-results");
 const cartBody = document.getElementById("cart-body");
 const cartEmpty = document.getElementById("cart-empty");
 
+const officeSelect = document.getElementById("f-office");
+const saleTypeSelect = document.getElementById("f-sale-type");
+let customersCache = [];
+let lastOffice = null;
+
 const discountInput = document.getElementById("f-discount");
 const currencySelect = document.getElementById("f-currency");
 const totalSubtotalEl = document.getElementById("total-subtotal");
@@ -61,8 +66,39 @@ channelForm.addEventListener("submit", async (e) => {
   }
 });
 
+async function loadOffices() {
+  const offices = (await fetchJSON("/api/offices")).filter((o) => o.active);
+  officeSelect.innerHTML = offices.map((o) => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+  if (window.USER_OFFICE) {
+    officeSelect.value = String(window.USER_OFFICE);
+    officeSelect.disabled = true;
+  }
+  lastOffice = officeSelect.value;
+}
+
+officeSelect.addEventListener("change", async () => {
+  if (cart.length && !(await confirmDialog("Al cambiar de oficina se vacia el carrito, porque el stock es distinto. Continuar?"))) {
+    officeSelect.value = lastOffice;
+    return;
+  }
+  cart = [];
+  lastOffice = officeSelect.value;
+  renderCart();
+});
+
+// Precio segun el tipo de venta: mayorista usa el precio mayorista si el producto lo tiene
+function priceFor(product, saleType) {
+  return saleType === "mayorista" && product.price_wholesale > 0 ? product.price_wholesale : product.price;
+}
+
+saleTypeSelect.addEventListener("change", () => {
+  for (const item of cart) item.price = priceFor(item.product, saleTypeSelect.value);
+  renderCart();
+});
+
 async function loadCustomers(selectId) {
   const customers = await fetchJSON("/api/customers");
+  customersCache = customers;
   customerSelect.innerHTML = '<option value="">Sin cliente</option>';
   for (const c of customers) {
     const opt = document.createElement("option");
@@ -72,6 +108,15 @@ async function loadCustomers(selectId) {
   }
   if (selectId) customerSelect.value = selectId;
 }
+
+// Un cliente mayorista pasa la venta a mayorista automaticamente
+customerSelect.addEventListener("change", () => {
+  const c = customersCache.find((x) => String(x.id) === customerSelect.value);
+  if (c && c.customer_type === "mayorista" && saleTypeSelect.value !== "mayorista") {
+    saleTypeSelect.value = "mayorista";
+    saleTypeSelect.dispatchEvent(new Event("change"));
+  }
+});
 
 btnNewCustomer.addEventListener("click", () => {
   customerForm.reset();
@@ -107,7 +152,7 @@ productSearch.addEventListener("input", () => {
     return;
   }
   searchTimer = setTimeout(async () => {
-    const products = await fetchJSON(`/api/products?q=${encodeURIComponent(q)}`);
+    const products = await fetchJSON(`/api/products?q=${encodeURIComponent(q)}&office_id=${officeSelect.value}`);
     renderResults(products);
   }, 250);
 });
@@ -124,7 +169,7 @@ function renderResults(products) {
     row.className = "product-result-row";
     row.innerHTML = `
       <span>${escapeHtml(p.name)} <span class="card-sku">SKU: ${escapeHtml(p.sku)}</span><br>
-        <span class="card-sku">${money(p.price, p.currency)} &middot; stock ${p.quantity}</span></span>
+        <span class="card-sku">${money(priceFor(p, saleTypeSelect.value), p.currency)} &middot; stock ${p.quantity}${p.condition && p.condition !== "Nuevo" ? " &middot; " + escapeHtml(p.condition) : ""}</span></span>
       <button type="button" class="btn-secondary">+ Agregar</button>
     `;
     row.addEventListener("click", () => {
@@ -142,7 +187,11 @@ function addToCart(product) {
   if (existing) {
     if (existing.quantity < existing.maxStock) existing.quantity += 1;
   } else {
-    cart.push({ sku: product.sku, name: product.name, price: product.price, quantity: 1, maxStock: product.quantity });
+    if (product.quantity <= 0) {
+      toast("No hay stock de ese producto en la oficina elegida", "error");
+      return;
+    }
+    cart.push({ sku: product.sku, name: product.name, price: priceFor(product, saleTypeSelect.value), quantity: 1, maxStock: product.quantity, product });
   }
   renderCart();
 }
@@ -217,6 +266,8 @@ form.addEventListener("submit", async (e) => {
 
   const payload = {
     channel_id: Number(channelSelect.value),
+    office_id: Number(officeSelect.value),
+    sale_type: saleTypeSelect.value,
     customer_id: customerSelect.value || null,
     discount: Number(discountInput.value) || 0,
     payment_method: paymentMethod,
@@ -239,5 +290,6 @@ form.addEventListener("submit", async (e) => {
 });
 
 loadChannels();
+loadOffices();
 loadCustomers();
 renderCart();

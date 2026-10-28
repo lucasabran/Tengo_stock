@@ -129,3 +129,11 @@ Lo definimos juntos antes de publicarla para no perder datos.
 - Ventas, gastos e ingresos de stock se pueden cargar desde Excel/CSV (cada pantalla tiene su boton y su plantilla). Las filas con errores se informan y no se cargan; las correctas si.
 - Se pueden eliminar ventas (repone el stock y borra sus devoluciones), devoluciones (vuelve a descontar el stock) y gastos. Cada permiso se asigna por rol; el Operador no tiene ninguno.
 - `/usuarios` > Herramientas (solo el dueño): descargar copia de seguridad y borrar datos de prueba. Antes de borrar se guarda una copia automatica en `backups/`.
+
+## Oficinas, condicion y mayorista
+
+- Cada oficina tiene su propio stock; `products.quantity` es siempre el consolidado (suma de `stock_levels`). Todo cambio de stock pasa por `stock.py`.
+- Un usuario con oficina asignada solo ve y opera su oficina; sin oficina ve el consolidado y puede elegir.
+- Condicion del producto: Nuevo, Usado, Reacondicionado, RMA. El mismo modelo en dos condiciones son dos SKU.
+- Precio minorista y mayorista por producto; la venta es minorista o mayorista (un cliente mayorista pasa la venta a mayorista solo).
+- Transferencias entre oficinas, cambio de SKU con historial, domicilio/oficina/tipo en clientes y compras por cliente.

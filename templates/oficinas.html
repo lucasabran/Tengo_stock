@@ -1,0 +1,31 @@
+{% extends "_base.html" %}
+{% block title %}Oficinas{% endblock %}
+{% block content %}
+<header>
+  <h1>Oficinas</h1>
+  <p class="header-hint">Cada oficina tiene su propio stock. En Stock se puede ver cada una por separado o el consolidado de todas.</p>
+</header>
+
+<main>
+  <div class="detail-actions"><button id="btn-new-office" type="button" class="btn-primary">+ Nueva oficina</button></div>
+  <section id="list"></section>
+</main>
+
+<dialog id="office-dialog">
+  <form id="office-form">
+    <h2 id="office-title">Nueva oficina</h2>
+    <label>Nombre
+      <input id="o-name" required autocomplete="off" placeholder="Ej: Villanova">
+    </label>
+    <label id="o-active-label" class="check-row hidden"><input id="o-active" type="checkbox"> Oficina activa</label>
+    <div id="office-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="office-cancel">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='oficinas.js') }}"></script>
+{% endblock %}

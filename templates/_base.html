@@ -14,7 +14,7 @@
 <body class="{% block body_class %}{% endblock %}">
 {% block nav %}{% include "_nav.html" %}{% endblock %}
 {% block content %}{% endblock %}
-<script>window.PERMS = {{ user_perms|tojson }};</script>
+<script>window.PERMS = {{ user_perms|tojson }}; window.USER_OFFICE = {{ user_office_id|tojson }};</script>
 <script src="{{ url_for('static', filename='common.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

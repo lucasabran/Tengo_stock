@@ -1,13 +1,15 @@
 from flask import Blueprint, jsonify, render_template, request
 
+import stock as stk
 from db import get_db
 
 bp = Blueprint("movements", __name__)
 
 MOVEMENTS_QUERY = """
-    SELECT stock_movements.*, products.name AS product_name
+    SELECT stock_movements.*, products.name AS product_name, offices.name AS office_name
     FROM stock_movements
     JOIN products ON products.sku = stock_movements.sku
+    LEFT JOIN offices ON offices.id = stock_movements.office_id
 """
 DEFAULT_LIMIT = 200
 MAX_LIMIT = 500
@@ -24,6 +26,9 @@ def movement_dict(row):
         "reference_type": row["reference_type"],
         "reference_id": row["reference_id"],
         "created_at": row["created_at"],
+        "office_id": row["office_id"],
+        "office_name": row["office_name"] or "",
+        "created_by": row["created_by"] or "",
     }
 
 
@@ -42,6 +47,11 @@ def list_movements():
     if sku:
         where.append("stock_movements.sku = ?")
         params.append(sku)
+
+    office_id = stk.user_office_id() or request.args.get("office_id", "").strip()
+    if office_id:
+        where.append("stock_movements.office_id = ?")
+        params.append(office_id)
 
     date_from = request.args.get("date_from")
     if date_from:

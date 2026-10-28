@@ -6,6 +6,12 @@
   <input id="search" type="search" placeholder="Buscar por cliente o canal...">
   <div class="filters-row">
     <select id="filter-channel"><option value="">Todos los canales</option></select>
+    <select id="filter-office"><option value="">Todas las oficinas</option></select>
+    <select id="filter-type">
+      <option value="">Minorista y mayorista</option>
+      <option value="minorista">Solo minorista</option>
+      <option value="mayorista">Solo mayorista</option>
+    </select>
     <input id="filter-from" type="date" title="Desde">
     <input id="filter-to" type="date" title="Hasta">
     <a id="export-link" href="/api/sales/export.csv">Exportar</a>

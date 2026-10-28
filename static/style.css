@@ -867,3 +867,10 @@ dialog form textarea {
 .tools-card form label:not(.check-row) { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--muted); }
 .tools-card form input:not([type=checkbox]) { padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font: inherit; }
 .tools-danger { border-color: var(--danger); }
+
+.badge-cond { background: var(--warning); border-color: var(--warning); color: white; vertical-align: middle; }
+.badge-type { background: var(--accent-soft, var(--bg)); color: var(--accent); }
+.purchases-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.purchases-table th, .purchases-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
+.purchases-table th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+#purchases-dialog { max-width: 640px; width: 94vw; }

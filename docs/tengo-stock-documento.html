@@ -1,0 +1,372 @@
+<title>Tengo Stock, documentación del sistema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: columna de lectura con índice lateral fijo en escritorio; tablas y diagramas con scroll propio */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #16202b;
+  --muted: #5b6776;
+  --line: #dde2e8;
+  --accent: #0f7ace;
+  --accent-soft: #e3f1fc;
+  --ink: #0b0f14;
+  --ok: #1f8f63;
+  --ok-soft: #e1f4ec;
+  --warn: #b26a12;
+  --warn-soft: #fbefdc;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1319; --surface: #161d26; --fg: #e6ebf1; --muted: #9aa6b4; --line: #27313d;
+    --accent: #4aa8e8; --accent-soft: #14283a; --ink: #000000;
+    --ok: #52c79b; --ok-soft: #12302a; --warn: #e3a550; --warn-soft: #33270f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1319; --surface: #161d26; --fg: #e6ebf1; --muted: #9aa6b4; --line: #27313d;
+  --accent: #4aa8e8; --accent-soft: #14283a; --ink: #000000;
+  --ok: #52c79b; --ok-soft: #12302a; --warn: #e3a550; --warn-soft: #33270f;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding-inline: 16px; }
+* { box-sizing: border-box; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; padding-block: 24px 64px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-top: 8px; font-size: 14px; }
+nav.toc strong { display: block; font-family: var(--font-display); font-size: 15px; margin-bottom: 10px; }
+nav.toc a { display: block; padding: 5px 0 5px 12px; border-left: 2px solid var(--line); color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+.hero { background: var(--ink); color: #fff; border-radius: 10px; padding: 32px 28px; margin-bottom: 28px; }
+.hero .tag { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #8fcaf5; }
+.hero .tag svg { color: #4aa8e8; }
+.hero h1 { font-family: var(--font-display); font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 10px 0 12px; text-wrap: balance; }
+.hero p { margin: 0; max-width: 62ch; color: #c9d3de; }
+.hero .meta { margin-top: 16px; font-size: 13px; color: #8d9aa9; }
+h2 { font-family: var(--font-display); font-size: 28px; line-height: 1.2; margin: 52px 0 14px; text-wrap: balance; scroll-margin-top: 16px; }
+h3 { font-family: var(--font-display); font-size: 19px; margin: 28px 0 8px; }
+p { margin: 0 0 14px; max-width: 72ch; }
+ul, ol { margin: 0 0 16px; padding-left: 22px; max-width: 72ch; }
+li { margin-bottom: 6px; }
+a { color: var(--accent); }
+.lead { font-size: 18px; max-width: 70ch; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 16px 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.card h3 { margin: 0 0 6px; font-size: 17px; }
+.card p { margin: 0; font-size: 15px; color: var(--muted); }
+.callout { background: var(--accent-soft); border-radius: 10px; padding: 14px 18px; margin: 18px 0; max-width: 78ch; }
+.callout.warn { background: var(--warn-soft); }
+.callout p:last-child { margin-bottom: 0; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 14px 0 20px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 560px; }
+th { text-align: left; font-family: var(--font-display); font-size: 13px; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.c, th.c { text-align: center; }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+.pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.roadmap { display: grid; gap: 14px; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
+.phase header { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; margin-bottom: 6px; }
+.phase h3 { margin: 0; }
+.phase p, .phase ul { font-size: 15px; }
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin: 14px 0 20px; }
+.diagram pre.mermaid { margin: 0; text-align: center; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+.kpi { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; }
+.kpi b { display: block; font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
+.kpi span { font-size: 14px; color: var(--muted); }
+code { font-size: 13.5px; background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; }
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  nav.toc { position: static; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  nav.toc strong { width: 100%; }
+  nav.toc a { border-left: none; padding: 2px 0; }
+  .hero { padding: 24px 20px; }
+  h2 { font-size: 24px; margin-top: 40px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Índice">
+  <strong>Contenido</strong>
+  <a href="#resumen">Resumen</a>
+  <a href="#modulos">Qué incluye hoy</a>
+  <a href="#usuarios">Usuarios y permisos</a>
+  <a href="#tecnica">Cómo está construido</a>
+  <a href="#limites">Qué falta hoy</a>
+  <a href="#escalar">Cómo escalarlo</a>
+  <a href="#mercado">Valor de mercado</a>
+  <a href="#diferencial">Nuestro diferencial</a>
+  <a href="#roadmap">Hoja de ruta</a>
+  <a href="#uso">Cómo se usa</a>
+</nav>
+
+<main>
+<section class="hero">
+  <span class="tag"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M13 3 L6 13 H11 L10 21 L18 10 H13 L13 3 Z" fill="currentColor"/></svg> Tengo Stock</span>
+  <h1>Un solo lugar para el stock, las ventas y la plata del negocio</h1>
+  <p>Sistema de gestión propio para una tienda de electrónica, electrodomésticos y celulares que vende por Mercado Libre, Tienda Nube, Instagram y mostrador. Este documento explica qué hay armado, con qué está hecho, cuánto vale y hacia dónde puede crecer.</p>
+  <div class="meta">Versión del 5 de octubre de 2026 · Online en tengo-stock.onrender.com · Código en GitHub (lucasabran/Tengo_stock)</div>
+</section>
+
+<h2 id="resumen">Resumen</h2>
+<p class="lead">Tengo Stock reemplaza las planillas sueltas y los mensajes de WhatsApp por una sola base de datos que todo el equipo usa desde el celular o la compu, con usuario y clave propios.</p>
+
+<div class="cards">
+  <div class="card"><h3>Objetivo</h3><p>Que cada producto, venta, devolución, gasto y deuda de un cliente quede registrado una sola vez, y que se pueda ver en tiempo real sin depender de una persona.</p></div>
+  <div class="card"><h3>Qué función cumple</h3><p>Es el sistema central del negocio: controla el stock, registra las ventas de todos los canales, lleva las cuentas corrientes en pesos y dólares y muestra los números del día.</p></div>
+  <div class="card"><h3>Para quién es</h3><p>El dueño, los administradores y los vendedores. Cada uno ve solo lo que su rol permite: los vendedores cargan ventas y stock, pero no ven gastos ni deudas.</p></div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><b>11</b><span>módulos funcionando</span></div>
+  <div class="kpi"><b>24</b><span>permisos configurables por rol</span></div>
+  <div class="kpi"><b>2</b><span>monedas con cuentas separadas (ARS y USD)</span></div>
+  <div class="kpi"><b>+100</b><span>verificaciones automáticas aprobadas</span></div>
+</div>
+
+<h2 id="modulos">Qué incluye hoy</h2>
+<p>Todo lo de esta tabla ya está programado, probado y publicado.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Módulo</th><th>Qué hace</th></tr></thead>
+<tbody>
+<tr><td><strong>Dashboard</strong></td><td>Ventas de hoy, de la semana y del mes, gastos del mes, stock bajo y últimas ventas. Está separado por moneda: pesos por un lado, dólares por otro.</td></tr>
+<tr><td><strong>Stock</strong></td><td>Productos con SKU, nombre, categoría, precio, moneda, cantidad, descripción, foto y stock mínimo. Categorías de electrónica ya cargadas. Carga individual, por Excel/CSV y botones rápidos de +1 y -1. Exporta todo a CSV.</td></tr>
+<tr><td><strong>Ingresos de stock</strong></td><td>Cada entrada se registra con cantidad, motivo (compra a proveedor, ajuste de inventario, devolución a proveedor) y nota. También se pueden cargar muchos ingresos juntos desde Excel.</td></tr>
+<tr><td><strong>Movimientos</strong></td><td>Historial completo de todo lo que entró y salió de cada producto, con fecha, motivo y quién lo cargó.</td></tr>
+<tr><td><strong>Ventas</strong></td><td>Venta con varios productos, canal (Mostrador, Mercado Libre, Tienda Nube, Instagram y los que se agreguen, incluso varias cuentas del mismo canal), cliente, descuento, medio de pago y moneda. Descuenta el stock solo y evita vender lo que no hay. Genera un comprobante interno imprimible. Se puede cargar masivamente desde Excel y eliminar si se cargó mal.</td></tr>
+<tr><td><strong>Devoluciones</strong></td><td>Se hacen sobre una venta existente, con motivo, y devuelven el stock al depósito. Se pueden eliminar si hubo un error.</td></tr>
+<tr><td><strong>Gastos</strong></td><td>Alquiler, servicios, sueldos, mercadería, impuestos y otros, con proveedor y nota. Carga masiva por Excel, edición y eliminación.</td></tr>
+<tr><td><strong>Clientes</strong></td><td>Ficha con teléfono, mail, documento y notas. Es la base para las cuentas corrientes.</td></tr>
+<tr><td><strong>Cuentas corrientes</strong></td><td>Cada cliente tiene dos cuentas, una en pesos y una en dólares, que no se mezclan. Se alimentan de ventas a cuenta corriente y de movimientos manuales (préstamos, adelantos, pagos), sin necesidad de que haya una venta de por medio. Muestra cuánto se cargó, cuánto se pagó y cuánto debe.</td></tr>
+<tr><td><strong>Usuarios y roles</strong></td><td>Solo para el dueño. Crea usuarios, resetea claves, desactiva gente y arma roles a medida marcando permisos. Incluye copia de seguridad y limpieza de datos de prueba.</td></tr>
+<tr><td><strong>Actividad</strong></td><td>Registro de quién hizo qué y cuándo: ventas, cambios de precio, borrados, cambios de usuarios e intentos de ingreso fallidos.</td></tr>
+</tbody></table></div>
+
+<div class="callout">
+<p><strong>Piezas relacionadas fuera del sistema.</strong> Además del sistema hay un Excel de control de objetivos por cuenta de Mercado Libre para el encargado (con una hoja de carga por empleado) y una carpeta de herramientas para publicar y sincronizar productos de Rodo en Mercado Libre (<code>rodo-ml-sync</code>). Hoy son independientes del sistema; en la hoja de ruta se proponen formas de unirlos.</p>
+</div>
+
+<h2 id="usuarios">Usuarios y permisos</h2>
+<p>El sistema arrancó con un usuario compartido y ahora tiene usuarios individuales. Hay tres tipos de acceso.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Quién</th><th>Usuario</th><th>Rol</th><th>Qué puede hacer</th></tr></thead>
+<tbody>
+<tr><td>Lucas Abran</td><td><code>labran</code></td><td><span class="pill">Dueño</span></td><td>Todo, y es el único que entra a Usuarios y roles, copias de seguridad y limpieza de datos.</td></tr>
+<tr><td>Denis Olivera<br>Nahuel Olivera</td><td><code>denis</code><br><code>nahuel</code></td><td><span class="pill ok">Administrador</span></td><td>Todo el sistema, incluidos gastos, cuentas corrientes, dashboard, eliminar registros y ver la actividad. No administran usuarios.</td></tr>
+<tr><td>Vendedores</td><td><code>user1</code>, <code>user2</code>, <code>user3</code></td><td><span class="pill warn">Operador</span></td><td>Cargar ventas y stock, y ver productos, ventas y movimientos. No ven gastos, cuentas corrientes, dashboard, clientes ni devoluciones, y no pueden eliminar nada.</td></tr>
+</tbody></table></div>
+<h3>Cómo se protege</h3>
+<ul>
+<li>Cada persona entra con su usuario y clave. Las claves se guardan protegidas con hash: nadie puede leerlas, ni siquiera desde la base de datos.</li>
+<li>Las claves temporales obligan a elegir una propia en el primer ingreso. Mínimo 8 caracteres.</li>
+<li>Tras 5 intentos fallidos se bloquea el ingreso por 5 minutos.</li>
+<li>Si se cambia un rol o se desactiva a alguien, se le cierra la sesión en el momento.</li>
+<li>El dueño puede crear roles nuevos (por ejemplo "Contador" que solo ve gastos) combinando los 24 permisos.</li>
+</ul>
+
+<h2 id="tecnica">Cómo está construido</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Capa</th><th>Qué se usó</th><th>Para qué</th></tr></thead>
+<tbody>
+<tr><td>Lenguaje y servidor</td><td>Python 3 con Flask 3</td><td>La lógica del negocio y la API. Flask es liviano, muy usado y fácil de ampliar.</td></tr>
+<tr><td>Base de datos</td><td>SQLite</td><td>Una base de datos en un solo archivo, guardada en un disco persistente. Es rápida, confiable y no necesita administrar un servidor aparte.</td></tr>
+<tr><td>Pantallas</td><td>HTML, CSS y JavaScript sin frameworks pesados (plantillas Jinja)</td><td>Carga rápido en celulares y no depende de librerías externas que se rompan.</td></tr>
+<tr><td>Excel y CSV</td><td>openpyxl</td><td>Leer y generar planillas para importar y exportar.</td></tr>
+<tr><td>Servidor de producción</td><td>gunicorn en Render (plan pago con disco persistente)</td><td>Mantiene el sistema online todo el día. Cuesta del orden de USD 7 a 10 por mes.</td></tr>
+<tr><td>Código y publicación</td><td>GitHub, con publicación automática</td><td>Cada cambio que se sube a GitHub se publica solo en Render. Queda historial de todo.</td></tr>
+<tr><td>Seguridad</td><td>Sesiones con cookie segura, claves cifradas con scrypt, control de permisos por rol en cada ruta, verificación del origen de los pedidos</td><td>Que nadie vea ni haga lo que no le corresponde.</td></tr>
+<tr><td>Calidad</td><td>Más de 100 verificaciones automáticas de permisos, importaciones, eliminaciones y limpieza</td><td>Antes de publicar se comprueba que, por ejemplo, un Operador no pueda entrar a gastos ni eliminar una venta.</td></tr>
+</tbody></table></div>
+
+<h3>Cómo se conectan las partes</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  U["Equipo<br/>celular o compu"] --> W["Tengo Stock<br/>Flask + gunicorn en Render"]
+  W --> D[("SQLite<br/>disco persistente")]
+  W --> F["Fotos de productos<br/>disco persistente"]
+  X["Excel / CSV"] --> W
+  W --> X
+  G["GitHub"] -->|"publicación automática"| W
+</pre></div>
+
+<h3>Cómo se mueve la información</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["Ingreso de stock<br/>(proveedor, Excel)"] --> P["Producto<br/>cantidad actual"]
+  P --> V["Venta<br/>descuenta stock"]
+  V --> C["Cuenta corriente<br/>si queda deuda"]
+  V --> R["Devolución<br/>repone stock"]
+  V --> T["Dashboard<br/>ventas del día y del mes"]
+  E["Gastos"] --> T
+</pre></div>
+<p>El stock es una sola cifra por producto y se modifica de forma atómica: si dos vendedores venden la última unidad a la vez, el sistema acepta una sola. Cada cambio deja un movimiento con fecha, motivo y usuario.</p>
+
+<h2 id="limites">Qué falta hoy</h2>
+<p>Para que el documento sea útil tiene que ser claro sobre lo que todavía no existe.</p>
+<div class="callout warn">
+<ul>
+<li><strong>No emite facturas electrónicas de ARCA.</strong> El comprobante actual es interno, sin validez fiscal. Quien factura lo hace aparte.</li>
+<li><strong>No está conectado a Mercado Libre ni a Tienda Nube.</strong> Las ventas de esos canales se cargan a mano o por Excel, y el stock no se sincroniza solo con las publicaciones.</li>
+<li><strong>Los productos no tienen costo.</strong> Por eso todavía no se puede calcular margen ni rentabilidad por producto o por canal.</li>
+<li><strong>Un solo depósito y una sola empresa.</strong> No hay multi-sucursal ni transferencias entre depósitos.</li>
+<li><strong>Los backups son manuales</strong> (botón de descarga para el dueño). No hay copia diaria automática.</li>
+<li><strong>Sin avisos automáticos.</strong> El stock bajo se ve en el dashboard, pero no llega por mail ni WhatsApp.</li>
+</ul>
+</div>
+
+<h2 id="escalar">Cómo escalarlo</h2>
+<p>La arquitectura actual alcanza bien para un negocio de este tamaño. Cuando crezca el volumen o la cantidad de usuarios, el camino técnico es ordenado y no obliga a rehacer nada.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Etapa</th><th>Cuándo conviene</th><th>Qué se hace</th></tr></thead>
+<tbody>
+<tr><td><strong>1. Hoy</strong></td><td>Un negocio, hasta unas decenas de usuarios y miles de ventas por mes</td><td>Flask + SQLite en un servicio de Render. Es suficiente.</td></tr>
+<tr><td><strong>2. Más volumen</strong></td><td>Muchas ventas simultáneas, integraciones con APIs, reportes pesados</td><td>Pasar la base a PostgreSQL administrado, copias diarias automáticas, tareas en segundo plano para sincronizar con Mercado Libre y Tienda Nube.</td></tr>
+<tr><td><strong>3. Más negocios</strong></td><td>Otras tiendas o sucursales quieren usarlo</td><td>Multi-empresa (cada cliente con sus datos aislados), multi-depósito, fotos en almacenamiento en la nube y planes de suscripción.</td></tr>
+<tr><td><strong>4. Producto</strong></td><td>Venderlo como servicio a otros comercios</td><td>Aplicación móvil o instalable, panel de administración propio, soporte, facturación de la suscripción.</td></tr>
+</tbody></table></div>
+<p>Como las pantallas ya hablan con el servidor mediante una API interna, otras aplicaciones (un bot de Instagram, una app de depósito, un panel de vendedores) pueden usar los mismos datos sin duplicar lógica.</p>
+
+<h2 id="mercado">Valor de mercado</h2>
+<p>Hay dos formas de medir cuánto vale algo parecido: cuánto cuesta alquilarlo cada mes y cuánto costaría construirlo.</p>
+
+<h3>Lo que paga hoy un negocio por una solución similar</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Alternativa</th><th>Precio de referencia</th><th>Qué incluye</th></tr></thead>
+<tbody>
+<tr><td><a href="https://contabilium.com/blog/precios-erp">Contabilium</a> (Argentina)</td><td>Entre $46.000 y $220.000 por mes más IVA según el plan (marzo de 2026)</td><td>Ventas, compras, stock, tesorería y facturación electrónica. Tiene conexión con Tienda Nube.</td></tr>
+<tr><td><a href="https://www.capterra.com/p/146241/Zoho-Inventory/pricing/">Zoho Inventory</a></td><td>Entre USD 29 y USD 249 por mes según el plan</td><td>Inventario y pedidos con límites de usuarios y de órdenes por mes. No resuelve facturación argentina ni cuentas corrientes en dos monedas.</td></tr>
+<tr><td>Tengo Stock</td><td>Del orden de USD 7 a 10 por mes de infraestructura</td><td>Todo lo descrito en este documento, sin límite de usuarios ni de ventas.</td></tr>
+</tbody></table></div>
+<p class="meta" style="font-size:13.5px;color:var(--muted)">Los precios cambian seguido y se tomaron de páginas públicas en octubre de 2026. Conviene revisarlos antes de usarlos en una presentación.</p>
+
+<h3>Lo que costaría construirlo a medida</h3>
+<p>Una estimación propia, no un presupuesto: un sistema con este alcance (stock, ventas multicanal, doble moneda, cuentas corrientes, roles y permisos, importaciones masivas y auditoría) lleva en el orden de 150 a 250 horas de un desarrollador. A valores habituales de mercado en Argentina, eso equivale a un desarrollo de entre USD 5.000 y USD 12.000, antes de sumar mantenimiento.</p>
+<div class="callout">
+<p>La conclusión práctica: el sistema ahorra una suscripción mensual de entre USD 40 y USD 200, no tiene límites por usuario, y se adapta al negocio en lugar de obligar al negocio a adaptarse. Su valor como producto vendible a terceros todavía depende de sumar facturación electrónica y las conexiones con los marketplaces.</p>
+</div>
+
+<h2 id="diferencial">Nuestro diferencial</h2>
+<div class="cards">
+  <div class="card"><h3>Hecho para vender por varios canales</h3><p>Mostrador, Mercado Libre (varias cuentas), Tienda Nube e Instagram conviven en el mismo stock desde el primer día.</p></div>
+  <div class="card"><h3>Pesos y dólares sin mezclar</h3><p>Cada cliente tiene una cuenta corriente en cada moneda. Es una necesidad real del comercio de electrónica en Argentina que casi ningún sistema genérico resuelve así.</p></div>
+  <div class="card"><h3>Propio y sin límites</h3><p>No se paga por usuario ni por venta, el código es del negocio y no hay riesgo de que cambien el precio o cierren el servicio.</p></div>
+  <div class="card"><h3>Permisos a medida</h3><p>El dueño decide quién ve la plata y quién solo carga. Los vendedores no ven la información sensible.</p></div>
+  <div class="card"><h3>Se construye sobre IA</h3><p>El sistema se puede ampliar rápido con asistentes de IA: reconocer productos por foto, responder consultas, sugerir reposiciones. Un ERP cerrado no puede hacerlo.</p></div>
+  <div class="card"><h3>Evoluciona al ritmo del negocio</h3><p>Cada pedido del equipo (cuentas corrientes con movimientos manuales, carga masiva, eliminar ventas) se incorporó en el día.</p></div>
+</div>
+
+<h2 id="roadmap">Cómo hacerlo cada vez más inteligente</h2>
+<p>Esta es la hoja de ruta propuesta, ordenada por lo que más valor aporta primero. Cada módulo se apoya en los datos que el sistema ya junta: productos, ventas, clientes y movimientos.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Prioridad</th><th>Módulo</th><th class="c">Impacto</th><th class="c">Esfuerzo</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Costos y rentabilidad</td><td class="c">Alto</td><td class="c">Bajo</td></tr>
+<tr><td>2</td><td>Conexión con Mercado Libre y Tienda Nube</td><td class="c">Muy alto</td><td class="c">Alto</td></tr>
+<tr><td>3</td><td>Objetivos, comisiones y bonificaciones</td><td class="c">Alto</td><td class="c">Medio</td></tr>
+<tr><td>4</td><td>CRM y publicidad desde la base de clientes</td><td class="c">Alto</td><td class="c">Medio</td></tr>
+<tr><td>5</td><td>Inteligencia artificial</td><td class="c">Muy alto</td><td class="c">Medio a alto</td></tr>
+<tr><td>6</td><td>Facturación electrónica ARCA</td><td class="c">Alto</td><td class="c">Medio</td></tr>
+<tr><td>7</td><td>Compras y proveedores</td><td class="c">Medio</td><td class="c">Medio</td></tr>
+</tbody></table></div>
+
+<div class="roadmap">
+<article class="phase">
+  <header><h3>1. Costos y rentabilidad</h3><span class="pill ok">Primer paso</span></header>
+  <p>Agregar el costo de cada producto (en pesos o dólares) para ver el margen de cada venta, de cada canal y de cada vendedor.</p>
+  <ul>
+    <li>Ganancia real por producto, por canal y por mes en el dashboard.</li>
+    <li>Cálculo de comisiones de Mercado Libre y de Tienda Nube para saber qué canal conviene.</li>
+    <li>Alerta cuando un producto se vende por debajo de un margen mínimo.</li>
+  </ul>
+</article>
+
+<article class="phase">
+  <header><h3>2. Conexión con Mercado Libre y Tienda Nube</h3><span class="pill">Mayor valor operativo</span></header>
+  <p>Conectar las cuentas por sus APIs oficiales para que el stock y las ventas se muevan solos.</p>
+  <ul>
+    <li>Las ventas de cada cuenta entran automáticamente y descuentan stock.</li>
+    <li>El stock y el precio se actualizan en las publicaciones sin tocarlas a mano.</li>
+    <li>Pausa automática de publicaciones sin stock y reactivación al reponer.</li>
+    <li>Soporte de varias cuentas por canal, como ya está pensado el modelo de canales.</li>
+  </ul>
+  <p>Se puede aprovechar el trabajo ya hecho en <code>rodo-ml-sync</code> para la publicación y sincronización con Mercado Libre.</p>
+</article>
+
+<article class="phase">
+  <header><h3>3. Objetivos, comisiones y bonificaciones</h3><span class="pill">Equipo de ventas</span></header>
+  <p>Unir el control de objetivos que hoy vive en Excel con las ventas reales del sistema.</p>
+  <ul>
+    <li>Metas por vendedor, por cuenta de Mercado Libre y por período, medidas con las ventas cargadas.</li>
+    <li>Bonificaciones y comisiones calculadas solas: por ejemplo un porcentaje extra al superar la meta del mes o al vender un producto prioritario.</li>
+    <li>Ranking del equipo y tablero para cada vendedor con su avance, para que vea su propia meta sin ver datos de los demás.</li>
+    <li>Liquidación mensual de comisiones lista para exportar.</li>
+  </ul>
+</article>
+
+<article class="phase">
+  <header><h3>4. CRM y publicidad desde la base de clientes</h3><span class="pill">Vender más a quien ya compró</span></header>
+  <p>Convertir la lista de clientes cargados en campañas.</p>
+  <ul>
+    <li><strong>Segmentos automáticos:</strong> clientes que compraron un celular hace un año y están por renovar, los que compran seguido, los que dejaron de comprar, los que tienen deuda.</li>
+    <li><strong>Mensajes por WhatsApp o mail</strong> con ofertas o recordatorios de pago, enviados desde el sistema.</li>
+    <li><strong>Públicos para anuncios:</strong> exportar listas segmentadas para usarlas como públicos personalizados en Meta (Facebook e Instagram) y Google, o crear públicos parecidos a los mejores clientes.</li>
+    <li><strong>Cupones y bonificaciones por cliente</strong> y medición de cuánto vendió cada campaña.</li>
+  </ul>
+  <div class="callout warn"><p>Para usar datos de clientes en publicidad hay que respetar la Ley 25.326 de protección de datos personales: pedir consentimiento, permitir que se den de baja y no compartir datos de más. El módulo tendría que registrar esa autorización de cada cliente.</p></div>
+</article>
+
+<article class="phase">
+  <header><h3>5. Inteligencia artificial</h3><span class="pill">Diferencial a futuro</span></header>
+  <ul>
+    <li><strong>Reconocimiento de productos por foto:</strong> sacar una foto de una caja o un equipo y que el sistema lo identifique y lo cargue o lo busque. Ya se guarda una foto por producto, que es la base. Requiere conectar un modelo de IA con visión y tiene costo por uso.</li>
+    <li><strong>Bot de consultas y ventas</strong> en Instagram, WhatsApp y Mercado Libre, que responda con el stock y el precio reales y pase la conversación a una persona para cerrar.</li>
+    <li><strong>Reposición inteligente:</strong> predecir qué productos se van a agotar y cuánto comprar según el ritmo de venta.</li>
+    <li><strong>Carga de facturas de proveedores:</strong> sacar una foto a la factura y que el sistema cargue el ingreso de stock.</li>
+    <li><strong>Resumen diario en lenguaje simple:</strong> qué se vendió, qué falta y qué conviene hacer hoy, enviado al dueño.</li>
+  </ul>
+</article>
+
+<article class="phase">
+  <header><h3>6. Facturación electrónica ARCA</h3><span class="pill">Cumplimiento</span></header>
+  <p>Emitir facturas con validez fiscal desde cada venta, con CAE y envío al cliente por mail. Se resuelve conectando un servicio de facturación o la integración directa con ARCA. Cierra la principal limitación actual.</p>
+</article>
+
+<article class="phase">
+  <header><h3>7. Compras y proveedores</h3><span class="pill">Orden interno</span></header>
+  <ul>
+    <li>Ficha de proveedores, órdenes de compra y cuentas corrientes con ellos.</li>
+    <li>Sugerencia de compra según stock mínimo y ventas.</li>
+    <li>Multi-depósito y transferencias entre sucursales, cuando haga falta.</li>
+  </ul>
+</article>
+</div>
+
+<h2 id="uso">Cómo se usa</h2>
+<ol>
+<li>Entrar a <strong>tengo-stock.onrender.com</strong> desde el celular o la compu.</li>
+<li>Ingresar con el usuario y la clave personales. En el primer ingreso el sistema pide elegir una clave nueva.</li>
+<li><strong>Vendedores:</strong> cargar los productos que llegan en Stock (botón "Cargar stock") y registrar cada venta en Ventas (botón +). Para cargar muchas cosas de una vez, usar los botones de importar y descargar antes la plantilla de Excel.</li>
+<li><strong>Si algo se cargó mal:</strong> un administrador puede eliminar la venta, la devolución o el gasto, y el stock se corrige solo.</li>
+<li><strong>Administradores:</strong> revisar Dashboard, Gastos y Cuentas corrientes, y mirar la sección Actividad para saber quién hizo qué.</li>
+<li><strong>Dueño:</strong> en Usuarios y roles se crean usuarios, se resetean claves, se arman roles y se descarga la copia de seguridad.</li>
+</ol>
+<div class="callout">
+<p><strong>Buenas costumbres.</strong> Descargar una copia de seguridad cada semana, no compartir las claves entre personas y desactivar el usuario de quien deje de trabajar en el negocio.</p>
+</div>
+
+<footer>Tengo Stock · documento generado el 5 de octubre de 2026. Las estimaciones de precio y de horas de desarrollo son orientativas.</footer>
+</main>
+</div>

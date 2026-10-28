@@ -5,7 +5,20 @@
   <h1>Stock</h1>
   <input id="search" type="search" placeholder="Buscar por SKU o nombre...">
   <div class="filters-row">
+    <select id="filter-office" title="Oficina"></select>
     <select id="filter-category"><option value="">Todas las categorias</option></select>
+    <select id="filter-condition" title="Condicion">
+      <option value="">Toda condicion</option>
+      <option value="Nuevo">Nuevo</option>
+      <option value="Usado">Usado</option>
+      <option value="Reacondicionado">Reacondicionado</option>
+      <option value="RMA">RMA</option>
+    </select>
+    <select id="filter-sort" title="Ordenar por">
+      <option value="sku">Orden: SKU</option>
+      <option value="name">Orden: nombre</option>
+      <option value="recent">Orden: ultimos cambios</option>
+    </select>
   </div>
   <div class="import-row">
     <button id="btn-import" type="button">Importar stock (Excel/CSV)</button>
@@ -29,9 +42,20 @@
 <dialog id="form-dialog">
   <form id="product-form">
     <h2 id="form-title">Nuevo producto</h2>
-    <label>SKU
-      <input name="sku" id="f-sku" required>
-    </label>
+    <div class="field-row">
+      <label>SKU
+        <input name="sku" id="f-sku" required>
+      </label>
+      <label>Condicion
+        <select id="f-condition">
+          <option value="Nuevo">Nuevo</option>
+          <option value="Usado">Usado</option>
+          <option value="Reacondicionado">Reacondicionado</option>
+          <option value="RMA">RMA</option>
+        </select>
+      </label>
+    </div>
+    <button type="button" id="btn-rename-sku" class="btn-secondary hidden">Cambiar SKU</button>
     <label>Nombre
       <input name="name" id="f-name" required>
     </label>
@@ -40,8 +64,11 @@
       <datalist id="category-list"></datalist>
     </label>
     <div class="field-row">
-      <label>Precio
+      <label>Precio minorista
         <input name="price" id="f-price" type="number" step="0.01" min="0" required>
+      </label>
+      <label>Precio mayorista
+        <input id="f-price-wholesale" type="number" step="0.01" min="0" value="0">
       </label>
       <label>Moneda
         <select id="f-currency">
@@ -50,9 +77,14 @@
         </select>
       </label>
     </div>
-    <label>Cantidad
-      <input name="quantity" id="f-quantity" type="number" step="1" min="0" required>
-    </label>
+    <div class="field-row">
+      <label id="f-office-label">Oficina
+        <select id="f-office"></select>
+      </label>
+      <label>Cantidad en esa oficina
+        <input name="quantity" id="f-quantity" type="number" step="1" min="0" required>
+      </label>
+    </div>
     <label>Stock minimo (avisa cuando baja de este numero)
       <input name="min_stock" id="f-min-stock" type="number" step="1" min="0" value="0">
     </label>
@@ -77,6 +109,9 @@
   <form id="stock-entry-form">
     <h2>Cargar stock</h2>
     <p id="stock-entry-product" class="card-sku"></p>
+    <label id="se-office-label">Oficina
+      <select id="se-office"></select>
+    </label>
     <label>Cantidad
       <input name="quantity" id="se-quantity" type="number" step="1" min="1" required>
     </label>
@@ -95,6 +130,51 @@
     <div class="form-actions">
       <button type="button" id="stock-entry-cancel">Cancelar</button>
       <button type="submit">Cargar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="transfer-dialog">
+  <form id="transfer-form">
+    <h2>Transferir entre oficinas</h2>
+    <p id="transfer-product" class="card-sku"></p>
+    <div class="field-row">
+      <label>Desde
+        <select id="tr-from"></select>
+      </label>
+      <label>Hacia
+        <select id="tr-to"></select>
+      </label>
+    </div>
+    <p id="tr-available" class="card-sku"></p>
+    <label>Cantidad
+      <input id="tr-quantity" type="number" step="1" min="1" required>
+    </label>
+    <label>Nota
+      <input id="tr-note" placeholder="Ej: reposicion de mostrador">
+    </label>
+    <div id="transfer-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="transfer-cancel">Cancelar</button>
+      <button type="submit">Transferir</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="rename-dialog">
+  <form id="rename-form">
+    <h2>Cambiar SKU</h2>
+    <p class="card-sku">Se actualiza tambien en el historial de ventas y movimientos de este producto.</p>
+    <label>SKU actual
+      <input id="rn-old" disabled>
+    </label>
+    <label>SKU nuevo
+      <input id="rn-new" required autocomplete="off">
+    </label>
+    <div id="rename-error" class="error hidden"></div>
+    <div class="form-actions">
+      <button type="button" id="rename-cancel">Cancelar</button>
+      <button type="submit">Cambiar</button>
     </div>
   </form>
 </dialog>

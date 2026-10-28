@@ -11,7 +11,22 @@ bp = Blueprint("admin", __name__)
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,30}$")
 
-USERS_QUERY = "SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id "
+USERS_QUERY = (
+    "SELECT u.*, r.name AS role_name, o.name AS office_name FROM users u "
+    "LEFT JOIN roles r ON r.id = u.role_id LEFT JOIN offices o ON o.id = u.office_id "
+)
+
+
+def _office_or_none(db, value):
+    if value in (None, "", "null"):
+        return None, None
+    try:
+        office_id = int(value)
+    except (TypeError, ValueError):
+        return None, "oficina invalida"
+    if not db.execute("SELECT 1 FROM offices WHERE id = ?", (office_id,)).fetchone():
+        return None, "oficina inexistente"
+    return office_id, None
 
 
 def user_dict(row):
@@ -24,6 +39,8 @@ def user_dict(row):
         "is_owner": bool(row["is_owner"]),
         "active": bool(row["active"]),
         "must_change_password": bool(row["must_change_password"]),
+        "office_id": row["office_id"],
+        "office_name": row["office_name"] or "",
         "last_login": row["last_login"] or "",
     }
 
@@ -80,6 +97,10 @@ def create_user():
     if db.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
         return jsonify({"error": f"Ya existe el usuario {username}"}), 409
 
+    office_id, office_err = _office_or_none(db, data.get("office_id"))
+    if office_err:
+        return jsonify({"error": office_err}), 400
+
     password = str(data.get("password", "")).strip()
     if password:
         problem = auth.validate_new_password(password)
@@ -89,9 +110,9 @@ def create_user():
         password = auth.generate_temp_password()
 
     cur = db.execute(
-        "INSERT INTO users (username, full_name, password_hash, role_id, is_owner, active, must_change_password, created_at) "
-        "VALUES (?, ?, ?, ?, 0, 1, 1, ?)",
-        (username, full_name, generate_password_hash(password), role["id"], now_iso()),
+        "INSERT INTO users (username, full_name, password_hash, role_id, is_owner, active, must_change_password, created_at, office_id) "
+        "VALUES (?, ?, ?, ?, 0, 1, 1, ?, ?)",
+        (username, full_name, generate_password_hash(password), role["id"], now_iso(), office_id),
     )
     db.commit()
     auth.audit("usuario_creado", "user", cur.lastrowid, username)
@@ -117,15 +138,18 @@ def update_user(user_id):
     if not db.execute("SELECT 1 FROM roles WHERE id = ?", (role_id,)).fetchone():
         return jsonify({"error": "rol invalido"}), 400
     active = 1 if data.get("active", bool(row["active"])) else 0
+    office_id, office_err = _office_or_none(db, data["office_id"]) if "office_id" in data else (row["office_id"], None)
+    if office_err:
+        return jsonify({"error": office_err}), 400
 
     # Si se desactiva o cambia de rol, se cierra su sesion para que el cambio rija ya
-    token_bump = 1 if (active == 0 and row["active"]) or role_id != row["role_id"] else 0
+    token_bump = 1 if (active == 0 and row["active"]) or role_id != row["role_id"] or office_id != row["office_id"] else 0
     db.execute(
-        "UPDATE users SET full_name = ?, role_id = ?, active = ?, token_version = token_version + ? WHERE id = ?",
-        (full_name, role_id, active, token_bump, user_id),
+        "UPDATE users SET full_name = ?, role_id = ?, active = ?, office_id = ?, token_version = token_version + ? WHERE id = ?",
+        (full_name, role_id, active, office_id, token_bump, user_id),
     )
     db.commit()
-    detail = f"{row['username']}: rol {row['role_id']}->{role_id}, activo {row['active']}->{active}"
+    detail = f"{row['username']}: rol {row['role_id']}->{role_id}, activo {row['active']}->{active}, oficina {row['office_id']}->{office_id}"
     auth.audit("usuario_editado", "user", user_id, detail)
     return jsonify(user_dict(db.execute(USERS_QUERY + "WHERE u.id = ?", (user_id,)).fetchone()))
 
@@ -364,6 +388,7 @@ def wipe_data():
             wipe("customers", "clientes")
         if "products" in targets:
             wipe("stock_movements", "movimientos de stock")
+            wipe("stock_levels", "stocks por oficina")
             wipe("products", "productos")
         if "audit" in targets:
             wipe("audit_log", "registros de actividad")

@@ -60,6 +60,21 @@ HEADER_MAP = {
     "vendor": "vendor",
     "motivo": "reason",
     "reason": "reason",
+    # condicion, mayorista y oficinas
+    "condicion": "condition",
+    "estado": "condition",
+    "condition": "condition",
+    "precio_mayorista": "price_wholesale",
+    "mayorista": "price_wholesale",
+    "price_wholesale": "price_wholesale",
+    "oficina": "office",
+    "office": "office",
+    "stock_minimo": "min_stock",
+    "minimo": "min_stock",
+    "min_stock": "min_stock",
+    "tipo_de_venta": "sale_type",
+    "tipo_venta": "sale_type",
+    "tipo": "sale_type",
 }
 
 
@@ -168,3 +183,19 @@ def parse_date(value):
         except ValueError:
             continue
     raise ValueError(f"fecha invalida: {text}")
+
+
+EMPTY_NUMBER_TOKENS = {"", "-", "--", "s/d", "sd", "n/a", "na", "null", "none", "sin stock", "sin dato"}
+
+
+def parse_number_lenient(value):
+    """Como parse_number, pero celdas vacias o con '-', 'S/D', 'N/A' valen 0 (por ejemplo un producto sin stock)."""
+    if value is None:
+        return 0.0
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in EMPTY_NUMBER_TOKENS:
+            return 0.0
+        text = text.replace("$", "").replace("us", "").replace(" ", "")
+        return parse_number(text)
+    return parse_number(value)
