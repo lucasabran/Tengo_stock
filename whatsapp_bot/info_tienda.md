@@ -66,7 +66,8 @@ Productos nuevos, originales y con garantía oficial del fabricante.
   - CYBER8: 8% OFF en compras de más de $800.000
   - CYBER10: 10% OFF en compras de más de $1.500.000
   Además, del 2/11 al 8/11 los productos de la sección CYBER WEEK tienen 5% OFF automático en el
-  carrito, sin código.
+  carrito, sin código. Los cupones CYBER no se suman a otras promociones (ni al 5% automático ni a
+  productos que ya tienen precio rebajado): se aplica un solo descuento.
 - Temporada: "Preparate para el verano" con aires acondicionados, ventiladores y climatizadores:
   https://tengostockarg.com.ar/verano/
 - El cupón se ingresa en el carrito, antes de pagar. Los precios de lista no cambian.
