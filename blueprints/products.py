@@ -2,9 +2,10 @@ import os
 import sqlite3
 import uuid
 
-from flask import Blueprint, Response, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, Response, g, jsonify, render_template, request, send_from_directory
 
 import auth
+import profitability
 import stock as stk
 from db import DB_PATH, get_db, now_iso
 from helpers import (
@@ -39,6 +40,10 @@ DEFAULT_CATEGORIES = [
     "Imagen y Sonido",
     "Electrodomesticos",
     "Electronica",
+    "Deco y Home",
+    "Climatización",
+    "Deportes",
+    "Juguetes",
     "Otro",
 ]
 
@@ -64,13 +69,39 @@ def row_to_dict(row, view_qty=None, offices=None):
         "price_wholesale": row["price_wholesale"] or 0,
         "quantity": quantity,
         "min_stock": row["min_stock"] or 0,
+        "supplier": row["supplier"] or "",
+        "product_url": row["product_url"] or "",
         "photo_url": f"/media/products/{row['photo']}" if row["photo"] else "",
         "updated_at": row["updated_at"],
     }
+    # El precio de costo solo lo ve quien tiene el permiso (informacion sensible)
+    if can_see_costs():
+        data["cost_price"] = row["cost_price"] or 0
+        if "pricing_cfg" not in g:
+            g.pricing_cfg = profitability.load_config(get_db())
+        data["profit"] = profitability.analyze(row["cost_price"], row["price"], g.pricing_cfg, row["currency"])
     if offices is not None:
         data["total_quantity"] = row["quantity"]
         data["stock_by_office"] = offices
     return data
+
+
+def can_see_costs():
+    return auth.has_any(("stock.costs",))
+
+
+def _clean_url(value):
+    """Devuelve (url, error). Solo http/https: evita enlaces tipo javascript: que se ejecutarian al hacer click."""
+    value = str(value or "").strip()
+    if not value:
+        return "", None
+    if any(ch.isspace() for ch in value) or len(value) > 500:
+        return "", "el link del producto no es valido (sin espacios, hasta 500 caracteres)"
+    if "://" not in value and ":" not in value:
+        value = "https://" + value
+    if not value.lower().startswith(("http://", "https://")):
+        return "", "el link del producto tiene que empezar con http:// o https://"
+    return value, None
 
 
 def _check_condition(value):
@@ -136,6 +167,12 @@ def list_categories():
     return jsonify(all_categories)
 
 
+@bp.route("/api/suppliers", methods=["GET"])
+def list_suppliers():
+    rows = get_db().execute("SELECT DISTINCT supplier FROM products WHERE supplier != '' ORDER BY supplier COLLATE NOCASE").fetchall()
+    return jsonify([r["supplier"] for r in rows])
+
+
 @bp.route("/api/products/<sku>", methods=["GET"])
 def get_product(sku):
     db = get_db()
@@ -159,12 +196,19 @@ def create_product():
     try:
         price = float(data.get("price", 0))
         price_wholesale = float(data.get("price_wholesale") or 0)
+        cost_price = float(data.get("cost_price") or 0) if can_see_costs() else 0
         quantity = int(data.get("quantity", 0))
         min_stock = max(int(data.get("min_stock") or 0), 0)
     except (TypeError, ValueError):
         return jsonify({"error": "precios, cantidad y stock minimo deben ser numericos"}), 400
     if quantity < 0:
         return jsonify({"error": "la cantidad inicial no puede ser negativa"}), 400
+    if cost_price < 0:
+        return jsonify({"error": "el precio de costo no puede ser negativo"}), 400
+    product_url, url_err = _clean_url(data.get("product_url"))
+    if url_err:
+        return jsonify({"error": url_err}), 400
+    supplier = str(data.get("supplier", "")).strip()[:120]
 
     condition = _check_condition(data.get("condition"))
     if not condition:
@@ -183,9 +227,11 @@ def create_product():
 
     now = now_iso()
     db.execute(
-        "INSERT INTO products (sku, name, description, category, condition, currency, price, price_wholesale, quantity, min_stock, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
-        (sku, name, description, category, condition, currency, price, price_wholesale, min_stock, now),
+        "INSERT INTO products (sku, name, description, category, condition, currency, price, price_wholesale, "
+        "cost_price, supplier, product_url, quantity, min_stock, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        (sku, name, description, category, condition, currency, price, price_wholesale,
+         cost_price, supplier, product_url, min_stock, now),
     )
     if quantity:
         stk.adjust(db, sku, office_id, quantity, now)
@@ -216,16 +262,32 @@ def update_product(sku):
         price_wholesale = float(data.get("price_wholesale", row["price_wholesale"]) or 0)
         min_stock = max(int(data.get("min_stock", row["min_stock"]) or 0), 0)
         new_qty = int(data["quantity"]) if data.get("quantity") not in (None, "") else None
+        # Sin el permiso de costos el valor guardado no se toca
+        if can_see_costs():
+            cost_price = float(data.get("cost_price", row["cost_price"]) or 0)
+        else:
+            cost_price = row["cost_price"] or 0
     except (TypeError, ValueError):
         return jsonify({"error": "precios, cantidad y stock minimo deben ser numericos"}), 400
     if new_qty is not None and new_qty < 0:
         return jsonify({"error": "la cantidad no puede ser negativa"}), 400
+    if cost_price < 0:
+        return jsonify({"error": "el precio de costo no puede ser negativo"}), 400
+    if "product_url" in data:
+        product_url, url_err = _clean_url(data.get("product_url"))
+        if url_err:
+            return jsonify({"error": url_err}), 400
+    else:
+        product_url = row["product_url"] or ""
+    supplier = str(data.get("supplier", row["supplier"] or "")).strip()[:120]
 
     now = now_iso()
     changes = []
     db.execute(
-        "UPDATE products SET name=?, description=?, category=?, condition=?, currency=?, price=?, price_wholesale=?, min_stock=?, updated_at=? WHERE sku=?",
-        (name, description, category, condition, currency, price, price_wholesale, min_stock, now, sku),
+        "UPDATE products SET name=?, description=?, category=?, condition=?, currency=?, price=?, price_wholesale=?, "
+        "cost_price=?, supplier=?, product_url=?, min_stock=?, updated_at=? WHERE sku=?",
+        (name, description, category, condition, currency, price, price_wholesale,
+         cost_price, supplier, product_url, min_stock, now, sku),
     )
 
     # La cantidad se edita para UNA oficina; el consolidado se recalcula solo
@@ -245,6 +307,10 @@ def update_product(sku):
         changes.append(f"precio {row['price']:,.2f} -> {price:,.2f}")
     if price_wholesale != (row["price_wholesale"] or 0):
         changes.append(f"mayorista {row['price_wholesale'] or 0:,.2f} -> {price_wholesale:,.2f}")
+    if cost_price != (row["cost_price"] or 0):
+        changes.append(f"costo {row['cost_price'] or 0:,.2f} -> {cost_price:,.2f}")
+    if supplier != (row["supplier"] or ""):
+        changes.append(f"proveedor {row['supplier'] or '-'} -> {supplier or '-'}")
     if condition != (row["condition"] or "Nuevo"):
         changes.append(f"condicion {row['condition']} -> {condition}")
     if name != row["name"]:
@@ -352,7 +418,8 @@ def transfer_stock():
 
 @bp.route("/api/products/template.csv")
 def download_template():
-    content = "sku,name,price,price_wholesale,currency,condition,quantity,office,min_stock,description,category\n"
+    cost_col = "cost_price," if can_see_costs() else ""
+    content = f"sku,name,price,price_wholesale,{cost_col}currency,condition,quantity,office,min_stock,description,category,supplier,product_url\n"
     return Response(
         content,
         mimetype="text/csv",
@@ -368,14 +435,19 @@ def export_products():
     for r in db.execute("SELECT sku, office_id, quantity FROM stock_levels").fetchall():
         levels[(r["sku"], r["office_id"])] = r["quantity"]
     rows = db.execute("SELECT p.* FROM products p ORDER BY " + SORTS["sku"]).fetchall()
+    costs = can_see_costs()
     content = build_csv(
-        ["sku", "name", "condition", "price", "price_wholesale", "currency", "quantity_total"]
+        ["sku", "name", "condition", "price", "price_wholesale"]
+        + (["cost_price"] if costs else [])
+        + ["currency", "quantity_total"]
         + [f"stock_{o['name']}" for o in offices]
-        + ["min_stock", "description", "category"],
+        + ["min_stock", "description", "category", "supplier", "product_url"],
         [
-            [r["sku"], r["name"], r["condition"] or "Nuevo", r["price"], r["price_wholesale"] or 0, r["currency"] or "ARS", r["quantity"]]
+            [r["sku"], r["name"], r["condition"] or "Nuevo", r["price"], r["price_wholesale"] or 0]
+            + ([r["cost_price"] or 0] if costs else [])
+            + [r["currency"] or "ARS", r["quantity"]]
             + [levels.get((r["sku"], o["id"]), 0) for o in offices]
-            + [r["min_stock"] or 0, r["description"], r["category"] or ""]
+            + [r["min_stock"] or 0, r["description"], r["category"] or "", r["supplier"] or "", r["product_url"] or ""]
             for r in rows
         ],
     )
@@ -448,12 +520,29 @@ def import_products():
         description = str(row.get("description", "") or "").strip()
         category = str(row.get("category", "") or "").strip()
         currency = normalize_currency(row.get("currency", "ARS"))
+        supplier = str(row.get("vendor", "") or "").strip()[:120]
+        product_url, url_err = _clean_url(row.get("product_url"))
+        if url_err:
+            errors.append(f"fila {i} (SKU {sku}): {url_err}")
+            continue
+        cost_raw = row.get("cost_price")
+        cost_given = can_see_costs() and cost_raw not in (None, "")
+        try:
+            cost_price = parse_number_lenient(cost_raw) if cost_given else None
+        except (TypeError, ValueError):
+            errors.append(f"fila {i} (SKU {sku}): el costo tiene que ser un numero")
+            continue
 
-        exists = db.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
+        exists = db.execute("SELECT supplier, cost_price, product_url FROM products WHERE sku = ?", (sku,)).fetchone()
         if exists:
+            # Una columna vacia o ausente en el archivo no pisa lo que ya estaba cargado
             db.execute(
-                "UPDATE products SET name=?, description=?, category=?, condition=?, currency=?, price=?, price_wholesale=?, min_stock=?, updated_at=? WHERE sku=?",
-                (name, description, category, condition, currency, price, price_wholesale, min_stock, now, sku),
+                "UPDATE products SET name=?, description=?, category=?, condition=?, currency=?, price=?, price_wholesale=?, "
+                "cost_price=?, supplier=?, product_url=?, min_stock=?, updated_at=? WHERE sku=?",
+                (name, description, category, condition, currency, price, price_wholesale,
+                 cost_price if cost_price is not None else (exists["cost_price"] or 0),
+                 supplier or exists["supplier"] or "", product_url or exists["product_url"] or "",
+                 min_stock, now, sku),
             )
             current = stk.level(db, sku, office_id)
             if quantity != current:
@@ -462,9 +551,11 @@ def import_products():
             updated += 1
         else:
             db.execute(
-                "INSERT INTO products (sku, name, description, category, condition, currency, price, price_wholesale, quantity, min_stock, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
-                (sku, name, description, category, condition, currency, price, price_wholesale, min_stock, now),
+                "INSERT INTO products (sku, name, description, category, condition, currency, price, price_wholesale, "
+                "cost_price, supplier, product_url, quantity, min_stock, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+                (sku, name, description, category, condition, currency, price, price_wholesale,
+                 cost_price or 0, supplier, product_url, min_stock, now),
             )
             if quantity:
                 stk.adjust(db, sku, office_id, quantity, now)

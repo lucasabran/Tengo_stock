@@ -1,0 +1,45 @@
+{% extends "_base.html" %}
+{% block title %}Alertas{% endblock %}
+{% block content %}
+<header>
+  <h1>Alertas</h1>
+  <p class="header-hint">Cosas para revisar en el inventario: stock bajo, errores de carga, margenes y datos que faltan. Se calcula en el momento.</p>
+</header>
+
+<main>
+  <section id="summary" class="card tools-card"></section>
+
+  <section id="pricing-card" class="card tools-card hidden">
+    <div class="card-name">Reglas de margen</div>
+    <div class="card-desc">Se usan para calcular la ganancia, el margen y el precio sugerido de cada producto. Costos fijos y de envio son en pesos.</div>
+    <form id="pricing-form">
+      <div class="field-row">
+        <label>Comision (%)
+          <input id="pc-fee" type="number" step="0.1" min="0" max="99">
+        </label>
+        <label>Margen objetivo (%)
+          <input id="pc-target" type="number" step="0.1" min="0" max="99">
+        </label>
+        <label>Margen minimo (%)
+          <input id="pc-min" type="number" step="0.1" min="0" max="99">
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Costo fijo por unidad ($)
+          <input id="pc-fixed" type="number" step="0.01" min="0">
+        </label>
+        <label>Envio por unidad ($)
+          <input id="pc-shipping" type="number" step="0.01" min="0">
+        </label>
+      </div>
+      <div id="pricing-error" class="error hidden"></div>
+      <div class="form-actions"><button type="submit">Guardar reglas</button></div>
+    </form>
+  </section>
+
+  <section id="groups"></section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='alertas.js') }}"></script>
+{% endblock %}

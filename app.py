@@ -5,7 +5,7 @@ from flask import Flask
 
 import auth
 from db import close_db, init_db
-from blueprints import accounts, admin, auth_bp, bulk, channels, customers, dashboard, expenses, movements, offices, products, returns, sales
+from blueprints import accounts, admin, alerts, auth_bp, bulk, channels, customers, dashboard, expenses, movements, offices, products, returns, sales
 
 app = Flask(__name__)
 app.teardown_appcontext(close_db)
@@ -39,6 +39,7 @@ app.register_blueprint(auth_bp.bp)
 app.register_blueprint(admin.bp)
 app.register_blueprint(bulk.bp)
 app.register_blueprint(offices.bp)
+app.register_blueprint(alerts.bp)
 
 auth.install(app)
 

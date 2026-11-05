@@ -63,12 +63,19 @@
       <input name="category" id="f-category" list="category-list" autocomplete="off" placeholder="Ej: Celulares">
       <datalist id="category-list"></datalist>
     </label>
+    <label>Proveedor
+      <input id="f-supplier" list="supplier-list" autocomplete="off" maxlength="120" placeholder="Ej: Rodo">
+      <datalist id="supplier-list"></datalist>
+    </label>
     <div class="field-row">
       <label>Precio minorista
         <input name="price" id="f-price" type="number" step="0.01" min="0" required>
       </label>
       <label>Precio mayorista
         <input id="f-price-wholesale" type="number" step="0.01" min="0" value="0">
+      </label>
+      <label id="f-cost-label" class="hidden">Precio de costo
+        <input id="f-cost" type="number" step="0.01" min="0" value="0">
       </label>
       <label>Moneda
         <select id="f-currency">
@@ -87,6 +94,9 @@
     </div>
     <label>Stock minimo (avisa cuando baja de este numero)
       <input name="min_stock" id="f-min-stock" type="number" step="1" min="0" value="0">
+    </label>
+    <label>Link del producto
+      <input id="f-url" type="url" inputmode="url" autocomplete="off" maxlength="500" placeholder="https://...">
     </label>
     <label>Descripcion
       <textarea name="description" id="f-description" rows="3"></textarea>

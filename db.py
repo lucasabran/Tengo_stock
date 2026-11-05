@@ -39,13 +39,17 @@ def _backup_before_migration():
     probe = sqlite3.connect(path)
     try:
         tables = {r[0] for r in probe.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-        if "products" not in tables or "offices" in tables:
+        if "products" not in tables:
+            return
+        product_cols = {r[1] for r in probe.execute("PRAGMA table_info(products)")}
+        # Copia solo cuando falta algo de la estructura nueva (oficinas, o proveedor/costo/link)
+        if "offices" in tables and "supplier" in product_cols:
             return
     finally:
         probe.close()
     backup_dir = path.parent / "backups"
     backup_dir.mkdir(exist_ok=True)
-    target = backup_dir / f"antes-de-migrar-oficinas-{datetime.now():%Y%m%d-%H%M%S}.db"
+    target = backup_dir / f"antes-de-migrar-{datetime.now():%Y%m%d-%H%M%S}.db"
     shutil.copy2(path, target)
     print(f"Copia de seguridad previa a la migracion: {target}")
 
@@ -295,6 +299,10 @@ def init_db():
     _ensure_column(db, "customers", "office_id", "office_id INTEGER")
     _ensure_column(db, "customers", "customer_type", "customer_type TEXT NOT NULL DEFAULT 'minorista'")
     _ensure_column(db, "users", "office_id", "office_id INTEGER")
+    _ensure_column(db, "products", "supplier", "supplier TEXT DEFAULT ''")
+    _ensure_column(db, "products", "cost_price", "cost_price REAL NOT NULL DEFAULT 0")
+    _ensure_column(db, "products", "product_url", "product_url TEXT DEFAULT ''")
+    _ensure_column(db, "customers", "product_acquired", "product_acquired TEXT DEFAULT ''")
 
     # Primera oficina y reparto inicial del stock existente (solo la primera vez)
     if db.execute("SELECT COUNT(*) FROM offices").fetchone()[0] == 0:
@@ -308,6 +316,11 @@ def init_db():
     )
     db.execute("UPDATE stock_movements SET office_id = ? WHERE office_id IS NULL", (default_office,))
     db.execute("UPDATE sales SET office_id = ? WHERE office_id IS NULL", (default_office,))
+
+    # Oficina Villa Devoto: se crea una sola vez (despues se puede renombrar o desactivar sin que reaparezca)
+    if not db.execute("SELECT 1 FROM settings WHERE key = 'seed_office_villa_devoto'").fetchone():
+        db.execute("INSERT OR IGNORE INTO offices (name, active, created_at) VALUES ('Villa Devoto', 1, ?)", (now_iso(),))
+        db.execute("INSERT INTO settings (key, value) VALUES ('seed_office_villa_devoto', '1')")
 
     db.execute(
         "INSERT OR IGNORE INTO channels (name, type, active, created_at) VALUES (?, ?, 1, ?)",

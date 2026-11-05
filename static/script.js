@@ -26,6 +26,11 @@ const fCurrency = document.getElementById("f-currency");
 const fOffice = document.getElementById("f-office");
 const fQuantity = document.getElementById("f-quantity");
 const fDescription = document.getElementById("f-description");
+const fSupplier = document.getElementById("f-supplier");
+const supplierList = document.getElementById("supplier-list");
+const fCost = document.getElementById("f-cost");
+const fCostLabel = document.getElementById("f-cost-label");
+const fUrl = document.getElementById("f-url");
 const fMinStock = document.getElementById("f-min-stock");
 const fPhoto = document.getElementById("f-photo");
 const photoPreview = document.getElementById("photo-preview");
@@ -121,6 +126,11 @@ async function loadCategories() {
   categoryFilterEl.value = currentFilter;
 }
 
+async function loadSuppliers() {
+  const suppliers = await fetchJSON("/api/suppliers");
+  supplierList.innerHTML = suppliers.map((s) => `<option value="${escapeHtml(s)}"></option>`).join("");
+}
+
 async function fetchProducts() {
   const params = new URLSearchParams();
   if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
@@ -142,6 +152,27 @@ function stockLine(p) {
     if (parts.length) detail = `<div class="card-sku">${parts.join(" &middot; ")}</div>`;
   }
   return { text: text + min, detail };
+}
+
+// Solo se enlazan URLs http(s); cualquier otra cosa no se muestra como link
+function safeUrl(url) {
+  return /^https?:\/\//i.test(url || "") ? url : "";
+}
+
+// Costo y margen: solo llegan en la respuesta si el usuario tiene el permiso "stock.costs".
+// El margen ya viene calculado por el servidor (descuenta comision y costos segun las reglas de Alertas).
+function costLine(p) {
+  if (p.cost_price === undefined || !(p.cost_price > 0)) return "";
+  const a = p.profit;
+  let html = `<div class="card-sku">Costo ${money(p.cost_price, p.currency)}</div>`;
+  if (a && a.margin_percent !== null) {
+    const flag = a.is_negative ? ' <span class="badge badge-off">No cubre el costo</span>' : a.is_low ? ' <span class="badge badge-warn">Margen bajo</span>' : "";
+    html += `<div class="card-sku">Ganancia ${money(a.net_profit, p.currency)} &middot; margen ${a.margin_percent}%${flag}</div>`;
+  }
+  if (a && a.suggested_price && (!a || a.is_low || a.is_negative || a.no_price)) {
+    html += `<div class="card-sku">Precio sugerido ${money(a.suggested_price, p.currency)}</div>`;
+  }
+  return html;
 }
 
 function render(list) {
@@ -166,8 +197,9 @@ function render(list) {
           <div class="card-name">${escapeHtml(p.name)} ${badge}</div>
           <div class="card-sku">SKU: ${escapeHtml(p.sku)}${p.category ? ` &middot; ${escapeHtml(p.category)}` : ""}</div>
         </div>
-        <div class="card-price">${money(p.price, p.currency)}${p.price_wholesale > 0 ? `<div class="card-sku">Mayorista ${money(p.price_wholesale, p.currency)}</div>` : ""}</div>
+        <div class="card-price">${money(p.price, p.currency)}${p.price_wholesale > 0 ? `<div class="card-sku">Mayorista ${money(p.price_wholesale, p.currency)}</div>` : ""}${costLine(p)}</div>
       </div>
+      ${p.supplier || safeUrl(p.product_url) ? `<div class="card-sku">${p.supplier ? `Proveedor: ${escapeHtml(p.supplier)}` : ""}${p.supplier && safeUrl(p.product_url) ? " &middot; " : ""}${safeUrl(p.product_url) ? `<a href="${escapeHtml(safeUrl(p.product_url))}" target="_blank" rel="noopener noreferrer">Ver link del producto</a>` : ""}</div>` : ""}
       ${p.description ? `<div class="card-desc">${escapeHtml(p.description)}</div>` : ""}
       <div class="card-bottom">
         <div>
@@ -225,6 +257,10 @@ function openCreate() {
   fCategory.value = "General";
   fCurrency.value = "ARS";
   fPriceWholesale.value = 0;
+  fCost.value = 0;
+  fCostLabel.classList.toggle("hidden", !can("stock.costs"));
+  fSupplier.value = "";
+  fUrl.value = "";
   fMinStock.value = 0;
   fillOfficeSelect(fOffice, currentOfficeId());
   setPhotoPreview("");
@@ -244,6 +280,10 @@ function openEdit(p) {
   fCurrency.value = p.currency || "ARS";
   fPrice.value = p.price;
   fPriceWholesale.value = p.price_wholesale || 0;
+  fCost.value = p.cost_price || 0;
+  fCostLabel.classList.toggle("hidden", !can("stock.costs"));
+  fSupplier.value = p.supplier || "";
+  fUrl.value = p.product_url || "";
   fillOfficeSelect(fOffice, currentOfficeId());
   fQuantity.value = officeQuantity(p, fOffice.value);
   fDescription.value = p.description || "";
@@ -344,11 +384,14 @@ form.addEventListener("submit", async (e) => {
     currency: fCurrency.value,
     price: parseFloat(fPrice.value),
     price_wholesale: parseFloat(fPriceWholesale.value) || 0,
+    supplier: fSupplier.value.trim(),
+    product_url: fUrl.value.trim(),
     quantity: parseInt(fQuantity.value, 10),
     office_id: Number(fOffice.value) || null,
     description: fDescription.value.trim(),
     min_stock: parseInt(fMinStock.value, 10) || 0,
   };
+  if (can("stock.costs")) payload.cost_price = parseFloat(fCost.value) || 0;
 
   try {
     if (editingSku) {
@@ -378,6 +421,7 @@ form.addEventListener("submit", async (e) => {
   dialog.close();
   toast(editingSku ? "Producto actualizado" : "Producto creado", "success");
   loadCategories();
+  loadSuppliers();
   refresh();
 });
 
@@ -547,6 +591,7 @@ importFile.addEventListener("change", async () => {
       "productos nuevos"
     );
     loadCategories();
+    loadSuppliers();
     refresh();
   } catch (err) {
     toast("Error al importar: " + errorMessage(err), "error", 9000);
@@ -572,4 +617,8 @@ if (can("stock.import")) {
 if (!can("stock.edit")) fabAdd.classList.add("hidden");
 if (!can("stock.import")) document.querySelectorAll(".import-row").forEach((el) => el.classList.add("hidden"));
 
-loadOffices().then(() => Promise.all([loadCategories(), refresh()]));
+// Desde Alertas se llega con /stock?q=SKU para ver ese producto
+const initialQuery = new URLSearchParams(location.search).get("q");
+if (initialQuery) searchEl.value = initialQuery;
+
+loadOffices().then(() => Promise.all([loadCategories(), loadSuppliers(), refresh()]));

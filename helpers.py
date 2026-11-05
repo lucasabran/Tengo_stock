@@ -75,6 +75,20 @@ HEADER_MAP = {
     "tipo_de_venta": "sale_type",
     "tipo_venta": "sale_type",
     "tipo": "sale_type",
+    # costo, link y producto adquirido
+    "costo": "cost_price",
+    "precio_de_costo": "cost_price",
+    "precio_costo": "cost_price",
+    "cost": "cost_price",
+    "cost_price": "cost_price",
+    "link": "product_url",
+    "link_de_producto": "product_url",
+    "link_producto": "product_url",
+    "enlace": "product_url",
+    "url": "product_url",
+    "product_url": "product_url",
+    "producto_adquirido": "product_acquired",
+    "product_acquired": "product_acquired",
 }
 
 

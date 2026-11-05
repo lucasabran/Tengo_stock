@@ -17,6 +17,8 @@ const fCity = document.getElementById("f-city");
 const fProvince = document.getElementById("f-province");
 const fOffice = document.getElementById("f-office");
 const fType = document.getElementById("f-type");
+const fAcquired = document.getElementById("f-acquired");
+const acquiredList = document.getElementById("acquired-list");
 const officeFilterEl = document.getElementById("filter-office");
 const typeFilterEl = document.getElementById("filter-type");
 const productFilterEl = document.getElementById("filter-product");
@@ -77,6 +79,7 @@ function render(customers) {
         </div>
         <div class="card-price">${c.purchase_count > 0 ? money(c.total_spent) : ""}</div>
       </div>
+      ${c.product_acquired ? `<div class="card-desc">Producto adquirido: ${escapeHtml(c.product_acquired)}</div>` : ""}
       ${c.purchase_count > 0 ? `<div class="card-desc">${c.purchase_count} compra(s)</div>` : ""}
       ${c.note ? `<div class="card-desc">${escapeHtml(c.note)}</div>` : ""}
       <div class="card-bottom">
@@ -119,9 +122,29 @@ function openCreate() {
   form.reset();
   fOffice.value = "";
   fType.value = "minorista";
+  fAcquired.value = "";
   hideError();
   dialog.showModal();
 }
+
+// Sugerencias de productos mientras se escribe (si el usuario no puede ver productos, queda como texto libre)
+let acquiredTimer;
+fAcquired.addEventListener("input", () => {
+  clearTimeout(acquiredTimer);
+  const q = fAcquired.value.trim();
+  if (q.length < 2) return;
+  acquiredTimer = setTimeout(async () => {
+    try {
+      const found = await fetchJSON(`/api/products?q=${encodeURIComponent(q)}&sort=name`);
+      acquiredList.innerHTML = found
+        .slice(0, 15)
+        .map((p) => `<option value="${escapeHtml(p.sku + " - " + p.name)}"></option>`)
+        .join("");
+    } catch (e) {
+      acquiredList.innerHTML = "";
+    }
+  }, 250);
+});
 
 function openEdit(c) {
   editingId = c.id;
@@ -136,6 +159,7 @@ function openEdit(c) {
   fProvince.value = c.province || "";
   fOffice.value = c.office_id ? String(c.office_id) : "";
   fType.value = c.customer_type || "minorista";
+  fAcquired.value = c.product_acquired || "";
   hideError();
   dialog.showModal();
 }
@@ -165,6 +189,7 @@ form.addEventListener("submit", async (e) => {
     province: fProvince.value.trim(),
     office_id: fOffice.value || null,
     customer_type: fType.value,
+    product_acquired: fAcquired.value.trim(),
   };
 
   try {

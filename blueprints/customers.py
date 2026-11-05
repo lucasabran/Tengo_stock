@@ -24,6 +24,7 @@ def row_to_dict(row):
         "office_id": row["office_id"],
         "office_name": row["office_name"] if "office_name" in keys else "",
         "customer_type": row["customer_type"] or "minorista",
+        "product_acquired": row["product_acquired"] or "",
         "note": row["note"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -66,10 +67,10 @@ def _filters():
     product = request.args.get("product", "").strip()
     if product:
         where.append(
-            "customers.id IN (SELECT s.customer_id FROM sales s JOIN sale_items si ON si.sale_id = s.id "
-            "WHERE s.customer_id IS NOT NULL AND (si.sku LIKE ? OR si.product_name LIKE ?))"
+            "(customers.product_acquired LIKE ? OR customers.id IN (SELECT s.customer_id FROM sales s JOIN sale_items si ON si.sale_id = s.id "
+            "WHERE s.customer_id IS NOT NULL AND (si.sku LIKE ? OR si.product_name LIKE ?)))"
         )
-        params += [f"%{product}%", f"%{product}%"]
+        params += [f"%{product}%", f"%{product}%", f"%{product}%"]
     return where, params
 
 
@@ -106,12 +107,12 @@ def export_customers():
         products[r["customer_id"]] = r["names"]
     content = build_csv(
         ["nombre", "telefono", "email", "documento", "domicilio", "localidad", "provincia", "oficina", "tipo",
-         "compras", "total_comprado", "productos_comprados", "nota"],
+         "compras", "total_comprado", "producto_adquirido", "productos_comprados", "nota"],
         [
             [
                 r["name"], r["phone"], r["email"], r["doc_number"], r["address"] or "", r["city"] or "",
                 r["province"] or "", r["office_name"] or "", r["customer_type"] or "minorista",
-                r["purchase_count"], r["total_spent"], products.get(r["id"], ""), r["note"] or "",
+                r["purchase_count"], r["total_spent"], r["product_acquired"] or "", products.get(r["id"], ""), r["note"] or "",
             ]
             for r in rows
         ],
@@ -182,8 +183,8 @@ def create_customer():
     if not ctype:
         return jsonify({"error": "tipo de cliente invalido (minorista o mayorista)"}), 400
     cur = db.execute(
-        "INSERT INTO customers (name, phone, email, doc_number, address, city, province, office_id, customer_type, note, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO customers (name, phone, email, doc_number, address, city, province, office_id, customer_type, product_acquired, note, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             name,
             str(data.get("phone", "")).strip(),
@@ -194,6 +195,7 @@ def create_customer():
             str(data.get("province", "")).strip(),
             office_id,
             ctype,
+            str(data.get("product_acquired", "")).strip()[:200],
             str(data.get("note", "")).strip(),
             now,
             now,
@@ -225,7 +227,7 @@ def update_customer(customer_id):
 
     db.execute(
         "UPDATE customers SET name=?, phone=?, email=?, doc_number=?, address=?, city=?, province=?, office_id=?, "
-        "customer_type=?, note=?, updated_at=? WHERE id=?",
+        "customer_type=?, product_acquired=?, note=?, updated_at=? WHERE id=?",
         (
             name,
             str(data.get("phone", row["phone"])).strip(),
@@ -236,6 +238,7 @@ def update_customer(customer_id):
             str(data.get("province", row["province"] or "")).strip(),
             office_id,
             ctype,
+            str(data.get("product_acquired", row["product_acquired"] or "")).strip()[:200],
             str(data.get("note", row["note"])).strip(),
             now_iso(),
             customer_id,
