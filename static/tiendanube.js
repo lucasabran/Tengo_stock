@@ -45,7 +45,7 @@ function lineRow(order, line) {
   return `<div class="list-row-sub">
       ${escapeHtml(String(line.quantity))} x ${escapeHtml(line.name)} &middot; ${line.tn_sku.startsWith("id:") ? "producto sin SKU en la tienda" : "SKU tienda: <b>" + escapeHtml(line.tn_sku || "(sin SKU)") + "</b>"}${line.resolved ? " &#10003;" : ""}
       ${base ? `<form class="inline-map" data-tn="${escapeHtml(base)}" style="display:inline-flex;gap:.3rem;margin-left:.4rem">
-        <input placeholder="SKU en el sistema" size="14" required>
+        <input class="sys-search" list="sys-products" placeholder="Buscar producto del sistema" size="22" required autocomplete="off">
         <button type="submit" class="btn-secondary">Asociar</button></form>` : ""}
     </div>`;
 }
@@ -78,7 +78,7 @@ function renderReview(orders) {
           const r = await fetchJSON("/api/tiendanube/map", {
             method: "POST",
             headers: JSON_HEADERS,
-            body: JSON.stringify({ tn_sku: f.dataset.tn, sku: f.querySelector("input").value.trim() }),
+            body: JSON.stringify({ tn_sku: f.dataset.tn, sku: skuFromChoice(f.querySelector("input").value) }),
           });
           toast(`Asociado. Se importaron ${r.imported} pedido(s).`, "success");
         } catch (err) {
@@ -181,3 +181,156 @@ btnSync.addEventListener("click", async () => {
 });
 
 load();
+
+
+// --- Buscador de productos del sistema (para asociar)
+const sysList = document.createElement("datalist");
+sysList.id = "sys-products";
+document.body.appendChild(sysList);
+let sysTimer = null;
+
+function skuFromChoice(text) {
+  const t = text.trim();
+  const i = t.indexOf(" - ");
+  return i > 0 ? t.slice(0, i).trim() : t;
+}
+
+document.addEventListener("input", (e) => {
+  if (!e.target.classList || !e.target.classList.contains("sys-search")) return;
+  const q = e.target.value.trim();
+  clearTimeout(sysTimer);
+  if (q.length < 2 || q.includes(" - ")) return;
+  sysTimer = setTimeout(async () => {
+    try {
+      const rows = await fetchJSON("/api/products?q=" + encodeURIComponent(q));
+      sysList.innerHTML = rows.slice(0, 15).map((p) => `<option value="${escapeHtml(p.sku + " - " + p.name)}"></option>`).join("");
+    } catch (err) { /* sin sugerencias */ }
+  }, 250);
+});
+
+// --- Catalogo de la tienda
+const catState = document.getElementById("catalog-state");
+const catBox = document.getElementById("catalog");
+const btnFetch = document.getElementById("btn-catalog-fetch");
+let catalog = null;
+let catPoll = null;
+
+function stockText(e) {
+  return e.unlimited_stock ? "stock sin limite" : `${e.stock} u.`;
+}
+
+function renderCatalog(c) {
+  catalog = c;
+  const when = c.fetched_at ? new Date(c.fetched_at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : null;
+  catState.textContent = c.running ? "Trayendo el catalogo de la tienda..." : c.error ? "Error: " + c.error : when ? "Ultima vez traido: " + when : "Todavia no se trajo.";
+  btnFetch.disabled = c.running;
+  catBox.classList.toggle("hidden", !c.total);
+  if (!c.total) return;
+  document.getElementById("catalog-summary").innerHTML = `<div class="card-name">${c.total} productos en la tienda</div>
+    <div class="card-desc"><b>${c.existing_count}</b> ya estan en el sistema &middot; <b>${c.suggested.length}</b> parecen ser uno que ya existe &middot; <b>${c.new.length}</b> no se encontraron.</div>`;
+
+  document.getElementById("sug-count").textContent = `(${c.suggested.length})`;
+  const sl = document.getElementById("sug-list");
+  sl.innerHTML = "";
+  for (const e of c.suggested) {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.dataset.key = e.key;
+    row.innerHTML = `<div><div class="list-row-title">${escapeHtml(e.name)}</div>
+      <div class="list-row-sub">Tienda: ${escapeHtml(e.tn_sku || "sin SKU")} &middot; ${stockText(e)}<br>
+      Sistema: <b>${escapeHtml(e.suggestion.sku)}</b> - ${escapeHtml(e.suggestion.name)}</div></div>
+      <div class="row-actions"><select>
+        <option value="skip">Omitir</option><option value="map">Asociar</option><option value="create">Crear</option></select></div>`;
+    sl.appendChild(row);
+  }
+  document.getElementById("sug-block").classList.toggle("hidden", !c.suggested.length);
+
+  document.getElementById("new-count").textContent = `(${c.new.length})`;
+  renderNew();
+}
+
+function renderNew() {
+  const filter = document.getElementById("new-filter").value.trim().toLowerCase();
+  const nl = document.getElementById("new-list");
+  const checked = new Set([...nl.querySelectorAll("input:checked")].map((i) => i.value));
+  nl.innerHTML = "";
+  for (const e of catalog.new) {
+    const hay = (e.name + " " + (e.tn_sku || "")).toLowerCase();
+    if (filter && !hay.includes(filter)) continue;
+    const row = document.createElement("label");
+    row.className = "list-row check-row";
+    const warn = e.shared_sku ? `<div class="error">&#9888; El SKU esta repetido en otro producto de la tienda (${escapeHtml(e.shared_with || "")}). Corregilo en Tienda Nube: no se crea solo.</div>` : "";
+    row.innerHTML = `<input type="checkbox" value="${escapeHtml(e.key)}" ${checked.has(e.key) ? "checked" : ""} ${e.shared_sku ? "disabled" : ""}>
+      <div><div class="list-row-title">${escapeHtml(e.name)}</div>
+      <div class="list-row-sub">${escapeHtml(e.tn_sku || "sin SKU")} &middot; ${money(e.price)} &middot; ${stockText(e)} &middot; ${escapeHtml(e.category || "sin categoria")}</div>${warn}</div>`;
+    nl.appendChild(row);
+  }
+}
+
+async function loadCatalog() {
+  const c = await fetchJSON("/api/tiendanube/catalog");
+  renderCatalog(c);
+  if (c.running && !catPoll) {
+    catPoll = setInterval(async () => {
+      const x = await fetchJSON("/api/tiendanube/catalog");
+      if (!x.running) { clearInterval(catPoll); catPoll = null; renderCatalog(x); }
+    }, 3000);
+  }
+}
+
+btnFetch.addEventListener("click", async () => {
+  try {
+    await fetchJSON("/api/tiendanube/catalog/fetch", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+  } catch (err) {
+    toast(errorMessage(err), "error");
+    return;
+  }
+  catState.textContent = "Trayendo el catalogo de la tienda...";
+  btnFetch.disabled = true;
+  setTimeout(loadCatalog, 1500);
+});
+
+document.getElementById("new-filter").addEventListener("input", renderNew);
+document.getElementById("new-check").addEventListener("click", () =>
+  document.querySelectorAll("#new-list input").forEach((i) => (i.checked = true)));
+document.getElementById("new-uncheck").addEventListener("click", () =>
+  document.querySelectorAll("#new-list input").forEach((i) => (i.checked = false)));
+document.getElementById("sug-all").addEventListener("click", () =>
+  document.querySelectorAll("#sug-list select").forEach((s) => (s.value = "map")));
+
+document.getElementById("btn-apply").addEventListener("click", async () => {
+  const err = document.getElementById("apply-error");
+  err.classList.add("hidden");
+  const create = [...document.querySelectorAll("#new-list input:checked")].map((i) => i.value);
+  const maps = [];
+  for (const row of document.querySelectorAll("#sug-list .list-row")) {
+    const choice = row.querySelector("select").value;
+    const e = catalog.suggested.find((x) => x.key === row.dataset.key);
+    if (choice === "map") maps.push({ key: e.key, sku: e.suggestion.sku });
+    if (choice === "create") create.push(e.key);
+  }
+  if (!create.length && !maps.length) {
+    err.textContent = "No elegiste nada para aplicar.";
+    err.classList.remove("hidden");
+    return;
+  }
+  const loadStock = document.getElementById("load-stock").checked;
+  const msg = `Se van a crear ${create.length} producto(s)${create.length && loadStock ? " con el stock de la tienda en la oficina elegida" : ""} y asociar ${maps.length}. ¿Aplicar?`;
+  if (!confirm(msg)) return;
+  try {
+    const r = await fetchJSON("/api/tiendanube/catalog/apply", {
+      method: "POST", headers: JSON_HEADERS,
+      body: JSON.stringify({ create, maps, office_id: officeSel.value, load_stock: loadStock }),
+    });
+    const extra = r.skipped.length ? ` (${r.skipped.length} omitidos: ${r.skipped.slice(0, 2).map((s) => s.reason).join("; ")})` : "";
+    toast(`Creados ${r.created}, asociados ${r.mapped}${extra}`, "success", 8000);
+  } catch (e2) {
+    err.textContent = errorMessage(e2);
+    err.classList.remove("hidden");
+    return;
+  }
+  load();
+  loadCatalog();
+});
+
+loadCatalog();

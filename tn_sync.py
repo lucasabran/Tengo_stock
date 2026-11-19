@@ -62,6 +62,7 @@ def ensure_schema(db):
         )
         """
     )
+    db.execute("CREATE TABLE IF NOT EXISTS tn_catalog (key TEXT PRIMARY KEY, data TEXT NOT NULL)")
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS tn_sku_map (
@@ -217,6 +218,11 @@ def resolve_sku(db, tn_sku):
         row = db.execute("SELECT sku FROM products WHERE sku = ? COLLATE NOCASE", (code,)).fetchone()
         if row:
             return row[0], warranty
+        if code.isdigit():  # codigos numericos: 068956 y 68956 son el mismo producto
+            plain = code.lstrip("0") or "0"
+            rows = [r[0] for r in db.execute("SELECT sku FROM products WHERE ltrim(sku, '0') = ?", (plain,)).fetchall() if r[0].isdigit()]
+            if len(rows) == 1:
+                return rows[0], warranty
     return None, ""
 
 

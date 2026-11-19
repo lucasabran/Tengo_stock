@@ -133,6 +133,9 @@ ENDPOINT_PERMS = {
     "tiendanube.tn_retry": ("tiendanube.manage",),
     "tiendanube.tn_ignore": ("tiendanube.manage",),
     "tiendanube.tn_ack": ("tiendanube.manage",),
+    "tiendanube.tn_catalog_get": ("tiendanube.manage",),
+    "tiendanube.tn_catalog_fetch": ("tiendanube.manage",),
+    "tiendanube.tn_catalog_apply": ("tiendanube.manage",),
     "admin.audit_page": ("audit.view",),
     "admin.list_audit": ("audit.view",),
 }

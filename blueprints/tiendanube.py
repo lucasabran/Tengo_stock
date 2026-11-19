@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, render_template, request
 
 import auth
+import stock as stk
+import tn_catalog
 import tn_sync
 from db import get_db, now_iso
 
@@ -171,3 +173,53 @@ def tn_ack(tn_id):
         return jsonify({"error": "pedido no encontrado"}), 404
     auth.audit("tienda_nube_aviso_visto", "tn_order", tn_id, "")
     return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Catalogo de la tienda: traerlo, ver el plan y aplicar solo lo aprobado
+# ---------------------------------------------------------------------------
+def _slim(entry):
+    keys = ("key", "tn_sku", "name", "category", "price", "stock", "unlimited_stock", "suggestion", "shared_sku", "shared_with")
+    return {k: entry[k] for k in keys if k in entry}
+
+
+@bp.route("/api/tiendanube/catalog", methods=["GET"])
+def tn_catalog_get():
+    db = get_db()
+    entries = tn_catalog.load_entries(db)
+    plan = tn_catalog.build_plan(db, entries) if entries else {"existing": [], "suggested": [], "new": []}
+    return jsonify({
+        **tn_catalog.fetch_state(db),
+        "total": len(entries),
+        "existing_count": len(plan["existing"]),
+        "suggested": [_slim(e) for e in plan["suggested"]],
+        "new": [_slim(e) for e in plan["new"]],
+        "skipped_unpublished": int(tn_sync.get_setting(db, "tn_catalog_skipped", "0") or 0),
+    })
+
+
+@bp.route("/api/tiendanube/catalog/fetch", methods=["POST"])
+def tn_catalog_fetch():
+    if not tn_sync.configured():
+        return jsonify({"error": "Falta cargar TN_STORE_ID y TN_ACCESS_TOKEN en el servidor (Render > Environment)"}), 400
+    threading.Thread(target=tn_catalog.run_fetch, daemon=True).start()
+    return jsonify({"started": True}), 202
+
+
+@bp.route("/api/tiendanube/catalog/apply", methods=["POST"])
+def tn_catalog_apply():
+    if not auth.has_any(("stock.edit",)):
+        return jsonify({"error": "Necesitas permiso para crear productos (stock.edit)"}), 403
+    data = request.get_json(force=True) or {}
+    create = [str(k) for k in (data.get("create") or [])]
+    maps = [m for m in (data.get("maps") or []) if isinstance(m, dict)]
+    if not create and not maps:
+        return jsonify({"error": "No elegiste nada para aplicar"}), 400
+    db = get_db()
+    office_id, err = stk.resolve_office(db, data.get("office_id"))
+    if err:
+        return jsonify({"error": err}), 400
+    result = tn_catalog.apply_plan(db, create, maps, office_id, bool(data.get("load_stock")), auth.actor())
+    auth.audit("catalogo_tienda_nube", "catalogo", "", f"{result['created']} creados ({result['stock_units']} u.), {result['mapped']} asociados, {len(result['skipped'])} omitidos")
+    result["orders"] = tn_sync.retry_review(db)  # los pedidos que esperaban estos productos se reintentan
+    return jsonify(result)

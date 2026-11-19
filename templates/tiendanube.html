@@ -24,6 +24,37 @@
     </form>
   </section>
 
+  <h2 class="section-title">Catalogo de la tienda</h2>
+  <section class="card tools-card" id="catalog-card">
+    <div class="card-desc">Para que las ventas entren solas, el sistema tiene que conocer los productos de la tienda. Traelo, revisa la lista y elegi que crear o a que producto ya existente asociar. <b>No se crea ni se cambia nada hasta que apliques.</b></div>
+    <div id="catalog-state" class="card-sku"></div>
+    <div class="form-actions"><button type="button" id="btn-catalog-fetch" class="btn-secondary">Traer catalogo de la tienda</button></div>
+  </section>
+  <div id="catalog" class="hidden">
+    <div id="catalog-summary" class="card tools-card"></div>
+    <details class="card" id="sug-block" open>
+      <summary class="list-row-title">Parecen el mismo producto con otro codigo <span id="sug-count" class="card-sku"></span></summary>
+      <div class="card-sku">Se compararon los nombres. Elegi para cada uno: <b>Asociar</b> (la tienda y el sistema son el mismo producto: no se toca el stock), <b>Crear</b> (es otro producto) u <b>Omitir</b>.</div>
+      <div class="form-actions"><button type="button" id="sug-all" class="btn-secondary">Asociar todos</button></div>
+      <div id="sug-list"></div>
+    </details>
+    <details class="card" id="new-block">
+      <summary class="list-row-title">Productos que no estan en el sistema <span id="new-count" class="card-sku"></span></summary>
+      <div class="card-sku"><b>Ojo:</b> algunos pueden existir en el sistema con otro codigo y otro nombre. Si creas uno que ya existe, el stock queda duplicado. Marca solo los que estas seguro que faltan (los que mas se venden primero).</div>
+      <input id="new-filter" type="search" placeholder="Filtrar por nombre o SKU" autocomplete="off">
+      <div class="form-actions">
+        <button type="button" id="new-check" class="btn-secondary">Marcar los que se ven</button>
+        <button type="button" id="new-uncheck" class="btn-secondary">Desmarcar todos</button>
+      </div>
+      <div id="new-list"></div>
+    </details>
+    <div class="card tools-card" id="apply-card">
+      <label class="check-row"><input id="load-stock" type="checkbox" checked> Cargar el stock actual de la tienda en los productos nuevos (en la oficina elegida arriba)</label>
+      <div id="apply-error" class="error hidden"></div>
+      <div class="form-actions"><button type="button" id="btn-apply" class="btn-primary">Aplicar lo elegido</button></div>
+    </div>
+  </div>
+
   <h2 class="section-title">Para revisar <span id="review-count" class="card-sku"></span></h2>
   <section id="review-list"></section>
 
