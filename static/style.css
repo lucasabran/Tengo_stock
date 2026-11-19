@@ -238,6 +238,7 @@ dialog form textarea {
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.3rem;
@@ -883,3 +884,13 @@ details.card > summary { cursor: pointer; }
 /* formularios apilados y bloques que se pueden ocultar con .hidden */
 .stack-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
 .stack-form.hidden, .form-actions.hidden { display: none; }
+
+/* pantallas angostas: nada se sale del cuadro */
+.tools-card select, .tools-card input[type="date"], .tools-card input[type="search"], .card input[type="search"] { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.inline-map { flex-wrap: wrap; max-width: 100%; }
+.inline-map input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 520px) {
+  .tools-card .form-actions { justify-content: stretch; }
+  .tools-card .form-actions > button, .tools-card .form-actions > a { flex: 1 1 8rem; }
+  .list-row { flex-wrap: wrap; }
+}

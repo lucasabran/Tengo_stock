@@ -23,8 +23,10 @@ function renderState(s) {
       <div class="card-desc">En Render > Environment hay que cargar <b>TN_STORE_ID</b> y <b>TN_ACCESS_TOKEN</b> (la clave de la app de Tienda Nube). Despues de guardarlas el servidor se reinicia solo y se puede activar desde aca.</div>`;
   } else if (s.enabled) {
     html = `<div class="card-name">Sincronizacion activa <span class="badge badge-owner">Activa</span></div>
-      <div class="card-desc">Se revisa la tienda cada 10 minutos. Importa pedidos pagados desde ${fmtDate(s.since)}.
-      Ultima revision: ${fmtDate(s.last_sync)}. ${s.imported} venta(s) importadas, ${s.review} para revisar.</div>`;
+      <div class="card-desc">Se revisa la tienda cada 10 minutos.</div>
+      <div class="card-desc">Importa pedidos pagados desde: <b>${fmtDate(s.since)}</b></div>
+      <div class="card-desc">Ultima revision: <b>${s.last_sync ? fmtDate(s.last_sync) : "todavia no se hizo"}</b></div>
+      <div class="card-desc"><b>${s.imported}</b> venta(s) importadas &middot; <b>${s.review}</b> para revisar</div>`;
   } else {
     html = `<div class="card-name">Sincronizacion apagada</div>
       <div class="card-desc">Al activarla solo se importan los pedidos pagados desde la fecha que elijas (por defecto, desde ese momento), para no descontar dos veces el stock que ya cargaron a mano.</div>`;

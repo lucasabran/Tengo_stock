@@ -160,7 +160,11 @@ def _api_get(path):
             if exc.code == 429 or exc.code >= 500:
                 time.sleep(2 * (attempt + 1))
                 continue
-            raise RuntimeError(f"Tienda Nube respondio {exc.code}: {exc.read().decode()[:200]}")
+            if exc.code == 401:
+                raise RuntimeError("Tienda Nube rechazo la clave de acceso (401): revisa TN_ACCESS_TOKEN en el servidor")
+            if exc.code == 403:
+                raise RuntimeError("Tienda Nube no le da permiso a la app para esto (403): falta el permiso de lectura de pedidos o productos")
+            raise RuntimeError(f"Tienda Nube respondio {exc.code}: {exc.read().decode()[:160]}")
         except urllib.error.URLError:
             time.sleep(2 * (attempt + 1))
     raise RuntimeError("No se pudo conectar con Tienda Nube (demasiados reintentos)")
