@@ -43,7 +43,7 @@ function renderState(s) {
 function lineRow(order, line) {
   const base = line.resolved ? "" : (line.tn_sku || "").replace(/-G[1-9]\d*$/i, "");
   return `<div class="list-row-sub">
-      ${escapeHtml(String(line.quantity))} x ${escapeHtml(line.name)} &middot; SKU tienda: <b>${escapeHtml(line.tn_sku || "(sin SKU)")}</b>${line.resolved ? " &#10003;" : ""}
+      ${escapeHtml(String(line.quantity))} x ${escapeHtml(line.name)} &middot; ${line.tn_sku.startsWith("id:") ? "producto sin SKU en la tienda" : "SKU tienda: <b>" + escapeHtml(line.tn_sku || "(sin SKU)") + "</b>"}${line.resolved ? " &#10003;" : ""}
       ${base ? `<form class="inline-map" data-tn="${escapeHtml(base)}" style="display:inline-flex;gap:.3rem;margin-left:.4rem">
         <input placeholder="SKU en el sistema" size="14" required>
         <button type="submit" class="btn-secondary">Asociar</button></form>` : ""}

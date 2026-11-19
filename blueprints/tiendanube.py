@@ -41,7 +41,7 @@ def _order_dict(row, with_lines=False, db=None):
             name = p.get("name")
             if isinstance(name, dict):
                 name = name.get("es") or next(iter(name.values()), "")
-            tn_sku = p.get("sku") or ""
+            tn_sku = tn_sync.line_key(p)
             resolved = bool(db is not None and tn_sync.resolve_sku(db, tn_sku)[0])
             lines.append({"tn_sku": tn_sku, "name": name or "", "quantity": p.get("quantity"), "price": p.get("price"), "resolved": resolved})
         d["lines"] = lines

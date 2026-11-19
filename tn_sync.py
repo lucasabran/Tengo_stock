@@ -188,12 +188,24 @@ def _product_exists(db, sku):
     return db.execute("SELECT sku FROM products WHERE sku = ?", (sku,)).fetchone() is not None
 
 
+def line_key(item):
+    """Identificador del producto en la tienda: su SKU o, si no tiene, 'id:<product_id>'."""
+    sku = (item.get("sku") or "").strip()
+    if sku:
+        return sku
+    return f"id:{item['product_id']}" if item.get("product_id") else ""
+
+
 def resolve_sku(db, tn_sku):
     """(sku propio, garantia o '') para el SKU que trae el pedido; (None, '') si no se encuentra.
-    Las variantes de garantia de la tienda (ABC-G2) se vuelven al producto base (ABC)."""
+    Las variantes de garantia de la tienda (ABC-G2) se vuelven al producto base (ABC).
+    Un producto de la tienda sin SKU se identifica como 'id:<product_id>' y solo se resuelve por asociacion manual."""
     raw = (tn_sku or "").strip()
     if not raw:
         return None, ""
+    if raw.startswith("id:"):
+        mapped = db.execute("SELECT sku FROM tn_sku_map WHERE tn_sku = ?", (raw,)).fetchone()
+        return (mapped[0], "") if mapped and _product_exists(db, mapped[0]) else (None, "")
     candidates = [(raw, "")]
     match = _WARRANTY_RE.match(raw)
     if match:
@@ -285,7 +297,7 @@ def import_order(db, order):
 
     problems, lines, needed, warranties = [], [], {}, []
     for item in order.get("products") or []:
-        tn_sku = (item.get("sku") or "").strip()
+        tn_sku = line_key(item)
         name = item.get("name") or tn_sku or "producto"
         if isinstance(name, dict):
             name = name.get("es") or next(iter(name.values()), "producto")
@@ -297,11 +309,14 @@ def import_order(db, order):
             problems.append(f"{name}: cantidad invalida")
             continue
         if not tn_sku:
-            problems.append(f"{name}: el producto de la tienda no tiene SKU")
+            problems.append(f"{name}: el producto de la tienda no tiene SKU ni ID")
             continue
         sku, warranty = resolve_sku(db, tn_sku)
         if not sku:
-            problems.append(f"SKU {tn_sku} ({name}): no existe en el sistema")
+            if tn_sku.startswith("id:"):
+                problems.append(f"{name}: el producto de la tienda no tiene SKU, asocialo una vez a un producto del sistema")
+            else:
+                problems.append(f"SKU {tn_sku} ({name}): no existe en el sistema")
             continue
         needed[sku] = needed.get(sku, 0) + qty
         price = _num(item.get("price"))
