@@ -24,6 +24,29 @@
     <div id="p-error" class="error hidden"></div>
     <button type="submit" class="btn-primary">Guardar clave</button>
   </form>
+
+  <section id="twofa-card" class="card" style="max-width:480px;margin-top:1rem">
+    <div class="card-name">Verificacion en dos pasos</div>
+    <div id="twofa-state" class="card-desc">Cargando...</div>
+    <div id="twofa-setup" class="hidden">
+      <p class="card-desc">1. Instala una app de autenticacion en el celular (Google Authenticator, Microsoft Authenticator o Authy).<br>
+      2. Escanea este codigo QR, o carga a mano esta clave:</p>
+      <div id="twofa-qr" style="margin:.5rem 0"></div>
+      <code id="twofa-secret" style="word-break:break-all"></code>
+      <p class="card-desc">3. Escribi el codigo de 6 digitos que muestra la app para confirmar.</p>
+    </div>
+    <form id="twofa-form" class="stack-form hidden">
+      <label id="twofa-pass-label" class="hidden">Tu clave
+        <input id="twofa-pass" type="password" autocomplete="current-password">
+      </label>
+      <label>Codigo de 6 digitos
+        <input id="twofa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required>
+      </label>
+      <div id="twofa-error" class="error hidden"></div>
+      <button type="submit" id="twofa-submit" class="btn-primary">Confirmar</button>
+    </form>
+    <div id="twofa-actions" class="form-actions hidden"><button type="button" id="twofa-toggle" class="btn-secondary"></button></div>
+  </section>
 </main>
 {% endblock %}
 {% block scripts %}
@@ -53,5 +76,70 @@ form.addEventListener("submit", async (e) => {
   form.reset();
   setTimeout(() => { window.location.href = "/"; }, 800);
 });
+
+// --- Verificacion en dos pasos
+const J = { "Content-Type": "application/json" };
+const twState = document.getElementById("twofa-state");
+const twForm = document.getElementById("twofa-form");
+const twSetup = document.getElementById("twofa-setup");
+const twToggle = document.getElementById("twofa-toggle");
+const twErr = document.getElementById("twofa-error");
+let twEnabled = false;
+let twMode = "idle"; // idle | enabling | disabling
+
+function twRender() {
+  twErr.classList.add("hidden");
+  twState.textContent = twEnabled
+    ? "Activada: al ingresar te pedimos tambien el codigo de tu celular."
+    : "Desactivada. Activala para que nadie pueda entrar solo con tu clave.";
+  document.getElementById("twofa-actions").classList.toggle("hidden", twMode !== "idle");
+  twToggle.textContent = twEnabled ? "Desactivar" : "Activar";
+  twForm.classList.toggle("hidden", twMode === "idle");
+  twSetup.classList.toggle("hidden", twMode !== "enabling");
+  document.getElementById("twofa-pass-label").classList.toggle("hidden", twMode !== "disabling");
+  document.getElementById("twofa-pass").required = twMode === "disabling";
+}
+
+async function twLoad() {
+  twEnabled = (await fetchJSON("/api/me/2fa")).enabled;
+  twMode = "idle";
+  twRender();
+}
+
+twToggle.addEventListener("click", async () => {
+  if (twEnabled) {
+    twMode = "disabling";
+  } else {
+    const s = await fetchJSON("/api/me/2fa/setup", { method: "POST", headers: J, body: "{}" });
+    document.getElementById("twofa-secret").textContent = s.secret;
+    const qr = document.getElementById("twofa-qr");
+    qr.innerHTML = "";
+    if (window.QRCode) new QRCode(qr, { text: s.uri, width: 168, height: 168 });
+    twMode = "enabling";
+  }
+  twRender();
+});
+
+twForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  twErr.classList.add("hidden");
+  const body = { code: document.getElementById("twofa-code").value };
+  if (twMode === "disabling") body.password = document.getElementById("twofa-pass").value;
+  try {
+    await fetchJSON(twMode === "enabling" ? "/api/me/2fa/enable" : "/api/me/2fa/disable", {
+      method: "POST", headers: J, body: JSON.stringify(body),
+    });
+  } catch (err) {
+    twErr.textContent = errorMessage(err);
+    twErr.classList.remove("hidden");
+    return;
+  }
+  toast(twMode === "enabling" ? "Verificacion en dos pasos activada" : "Verificacion desactivada", "success");
+  twForm.reset();
+  twLoad();
+});
+
+twLoad();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 {% endblock %}

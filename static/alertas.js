@@ -24,7 +24,7 @@ function renderGroups(data) {
       <div class="alert-items">
         ${g.items
           .map(
-            (i) => `<a class="list-row alert-row" href="/stock?q=${encodeURIComponent(i.sku)}">
+            (i) => `<a class="list-row alert-row" href="${i.href ? escapeHtml(i.href) : "/stock?q=" + encodeURIComponent(i.sku)}">
               <div><div class="list-row-title">${escapeHtml(i.name)}</div>
               <div class="list-row-sub">SKU ${escapeHtml(i.sku)}${i.detail ? " &middot; " + escapeHtml(i.detail) : ""}</div></div>
             </a>`
@@ -36,7 +36,31 @@ function renderGroups(data) {
   }
 }
 
+const dailyEl = document.getElementById("daily");
+
+function renderDaily(s) {
+  const parts = [];
+  if (s.sales) {
+    if (s.sales.totals.length) {
+      parts.push(s.sales.totals.map((t) => `<b>${t.count}</b> venta(s) por <b>${money(t.total, t.currency)}</b>`).join(" &middot; "));
+      if (s.sales.by_channel.length) {
+        parts.push(s.sales.by_channel.map((c) => `${escapeHtml(c.channel)}: ${c.count} (${money(c.total)})`).join(" &middot; "));
+      }
+    } else {
+      parts.push("No hubo ventas registradas.");
+    }
+  }
+  parts.push(`Sin stock: <b>${s.stock.zero.length}</b> &middot; Por debajo del minimo: <b>${s.stock.low.length}</b>`);
+  if (s.tienda_nube && (s.tienda_nube.enabled || s.tienda_nube.review)) {
+    parts.push(`Tienda Nube: ${s.tienda_nube.imported_yesterday} importada(s) ayer &middot; ${s.tienda_nube.review} para revisar`);
+  }
+  const d = new Date(s.date + "T12:00:00");
+  dailyEl.innerHTML = `<div class="card-name">Resumen de ayer (${d.toLocaleDateString("es-AR", { day: "numeric", month: "long" })})</div>
+    ${parts.map((p) => `<div class="card-desc">${p}</div>`).join("")}`;
+}
+
 async function load() {
+  fetchJSON("/api/daily-summary").then(renderDaily).catch(() => {});
   renderGroups(await fetchJSON("/api/alerts"));
 }
 

@@ -42,8 +42,9 @@ def _backup_before_migration():
         if "products" not in tables:
             return
         product_cols = {r[1] for r in probe.execute("PRAGMA table_info(products)")}
-        # Copia solo cuando falta algo de la estructura nueva (oficinas, o proveedor/costo/link)
-        if "offices" in tables and "supplier" in product_cols:
+        user_cols = {r[1] for r in probe.execute("PRAGMA table_info(users)")} if "users" in tables else {"totp_last"}
+        # Copia solo cuando falta algo de la estructura nueva (oficinas, proveedor/costo/link, verificacion en dos pasos)
+        if "offices" in tables and "supplier" in product_cols and "totp_last" in user_cols:
             return
     finally:
         probe.close()
@@ -303,6 +304,9 @@ def init_db():
     _ensure_column(db, "products", "cost_price", "cost_price REAL NOT NULL DEFAULT 0")
     _ensure_column(db, "products", "product_url", "product_url TEXT DEFAULT ''")
     _ensure_column(db, "customers", "product_acquired", "product_acquired TEXT DEFAULT ''")
+    _ensure_column(db, "users", "totp_secret", "totp_secret TEXT DEFAULT ''")
+    _ensure_column(db, "users", "totp_enabled", "totp_enabled INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(db, "users", "totp_last", "totp_last INTEGER NOT NULL DEFAULT 0")
 
     # Primera oficina y reparto inicial del stock existente (solo la primera vez)
     if db.execute("SELECT COUNT(*) FROM offices").fetchone()[0] == 0:

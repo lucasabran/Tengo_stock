@@ -1,0 +1,39 @@
+{% extends "_base.html" %}
+{% block title %}Tienda Nube{% endblock %}
+{% block content %}
+<header>
+  <h1>Tienda Nube</h1>
+  <p class="header-hint">Las ventas pagadas de la tienda entran solas como ventas del canal Tienda Nube y descuentan el stock. Lo que no se puede cargar solo queda abajo para revisar.</p>
+</header>
+
+<main>
+  <section id="state-card" class="card tools-card">
+    <div id="state-text"></div>
+    <form id="config-form">
+      <label>Oficina de la que sale el stock
+        <select id="tn-office"></select>
+      </label>
+      <label id="since-label">Importar pedidos pagados desde (vacio = desde ahora)
+        <input id="tn-since" type="date">
+      </label>
+      <div id="config-error" class="error hidden"></div>
+      <div class="form-actions">
+        <button type="button" id="btn-sync" class="hidden">Sincronizar ahora</button>
+        <button type="button" id="btn-toggle">Activar</button>
+      </div>
+    </form>
+  </section>
+
+  <h2 class="section-title">Para revisar <span id="review-count" class="card-sku"></span></h2>
+  <section id="review-list"></section>
+
+  <h2 class="section-title">Avisos de pedidos ya cargados</h2>
+  <section id="flag-list"></section>
+
+  <h2 class="section-title">Ultimas ventas importadas</h2>
+  <section id="recent-list"></section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='tiendanube.js') }}"></script>
+{% endblock %}

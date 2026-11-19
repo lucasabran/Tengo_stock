@@ -42,6 +42,7 @@ PERMISSIONS = [
     ("Configuracion", "channels.manage", "Editar y desactivar canales de venta"),
     ("Configuracion", "offices.manage", "Administrar oficinas"),
     ("Configuracion", "audit.view", "Ver el registro de actividad"),
+    ("Configuracion", "tiendanube.manage", "Ver y administrar la sincronizacion con Tienda Nube"),
 ]
 PERMISSION_KEYS = [p[1] for p in PERMISSIONS]
 
@@ -119,10 +120,19 @@ ENDPOINT_PERMS = {
     "expenses.create_expense": ("expenses.manage",),
     "expenses.update_expense": ("expenses.manage",),
     "expenses.delete_expense": ("expenses.delete",),
+    "ops.daily_summary": ("stock.view",),
     "alerts.alertas_page": ("stock.view",),
     "alerts.list_alerts": ("stock.view",),
     "alerts.get_pricing_config": ("stock.costs",),
     "alerts.update_pricing_config": ("stock.costs",),
+    "tiendanube.tn_page": ("tiendanube.manage",),
+    "tiendanube.tn_status": ("tiendanube.manage",),
+    "tiendanube.tn_config": ("tiendanube.manage",),
+    "tiendanube.tn_sync_now": ("tiendanube.manage",),
+    "tiendanube.tn_map_sku": ("tiendanube.manage",),
+    "tiendanube.tn_retry": ("tiendanube.manage",),
+    "tiendanube.tn_ignore": ("tiendanube.manage",),
+    "tiendanube.tn_ack": ("tiendanube.manage",),
     "admin.audit_page": ("audit.view",),
     "admin.list_audit": ("audit.view",),
 }
@@ -132,10 +142,15 @@ OWNER_ONLY_ENDPOINTS = {
     "admin.users_page", "admin.list_users", "admin.create_user", "admin.update_user", "admin.reset_password",
     "admin.list_roles", "admin.create_role", "admin.update_role", "admin.delete_role", "admin.permissions_catalog",
     "admin.download_backup", "admin.wipe_data",
+    "ops.list_backups", "ops.download_backup_file", "ops.get_summary_settings", "ops.update_summary_settings",
+    "ops.send_summary_now",
 }
 # Cualquier usuario con sesion iniciada
-LOGGED_IN_ENDPOINTS = {"auth.account_page", "auth.change_password", "auth.logout", "auth.me"}
-PUBLIC_ENDPOINTS = {"auth.login", "auth.login_page", "static", "healthcheck"}
+LOGGED_IN_ENDPOINTS = {
+    "auth.account_page", "auth.change_password", "auth.logout", "auth.me",
+    "auth.twofa_status", "auth.twofa_setup", "auth.twofa_enable", "auth.twofa_disable",
+}
+PUBLIC_ENDPOINTS = {"auth.login", "auth.login_page", "auth.login_2fa_page", "auth.login_2fa", "static", "healthcheck"}
 
 # Orden y destino de la barra de navegacion: (clave, texto, url, permisos que la habilitan)
 NAV_ITEMS = [
@@ -149,6 +164,7 @@ NAV_ITEMS = [
     ("oficinas", "Oficinas", "/oficinas", ("offices.manage",)),
     ("clientes", "Clientes", "/clientes", ("customers.view",)),
     ("cuentas", "Cuentas corrientes", "/cuentas", ("accounts.view",)),
+    ("tiendanube", "Tienda Nube", "/tienda-nube", ("tiendanube.manage",)),
     ("actividad", "Actividad", "/actividad", ("audit.view",)),
 ]
 
@@ -320,7 +336,8 @@ def seed_auth():
     elif os.environ.get("STOCK_FORCE_OWNER_RESET") == "1":
         # Rescate: si el dueño pierde su clave, define STOCK_FORCE_OWNER_RESET=1 y STOCK_PASSWORD en Render
         conn.execute(
-            "UPDATE users SET password_hash = ?, active = 1, token_version = token_version + 1 WHERE is_owner = 1",
+            "UPDATE users SET password_hash = ?, active = 1, token_version = token_version + 1, "
+            "totp_enabled = 0, totp_secret = '' WHERE is_owner = 1",
             (generate_password_hash(owner_pass),),
         )
 
@@ -383,7 +400,10 @@ def install(app):
                 g.user = user
                 g.permissions = current_permissions(user)
         if g.user is None:
+            pending_2fa = session.get("pre2fa")  # no perder el paso 2 si abre otra pagina mientras tanto
             session.clear()
+            if pending_2fa:
+                session["pre2fa"] = pending_2fa
             if _wants_json():
                 return jsonify({"error": "Sesion vencida. Volve a ingresar."}), 401
             return redirect(url_for("auth.login_page", next=request.full_path.rstrip("?")))

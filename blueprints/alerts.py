@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, render_template, request
 import auth
 import profitability
 import stock as stk
+import tn_sync
 from db import get_db
 
 bp = Blueprint("alerts", __name__)
@@ -96,6 +97,22 @@ def list_alerts():
                 others = ", ".join(x["sku"] for x in plist if x["sku"] != p["sku"])
                 add("duplicate_name", "Nombre repetido en otro SKU", "info",
                     "Puede ser normal (por ejemplo Nuevo y Usado), pero a veces es un producto cargado dos veces.", p, f"tambien: {others}")
+
+    # Pedidos de Tienda Nube que necesitan una persona (solo para quien administra esa integracion)
+    if auth.has_any(("tiendanube.manage",)):
+        tn_sync.ensure_schema(db)
+        for r in db.execute("SELECT number, customer, reason FROM tn_orders WHERE status = 'revisar' ORDER BY tn_id DESC").fetchall():
+            group = groups.setdefault("tn_review", {"key": "tn_review", "title": "Pedidos de Tienda Nube sin cargar", "severity": "critical",
+                                                    "hint": "No se pudieron cargar solos. Resolvelos en la pestaña Tienda Nube.", "count": 0, "items": []})
+            group["count"] += 1
+            if len(group["items"]) < MAX_ITEMS:
+                group["items"].append({"sku": f"#{r['number']}", "name": r["customer"] or "Pedido", "detail": r["reason"], "href": "/tienda-nube"})
+        for r in db.execute("SELECT number, customer, flag FROM tn_orders WHERE flag != '' ORDER BY tn_id DESC").fetchall():
+            group = groups.setdefault("tn_flag", {"key": "tn_flag", "title": "Pedidos de Tienda Nube cancelados despues de cargarse", "severity": "warning",
+                                                  "hint": "La venta sigue registrada y el stock descontado: decidi si corresponde una devolucion.", "count": 0, "items": []})
+            group["count"] += 1
+            if len(group["items"]) < MAX_ITEMS:
+                group["items"].append({"sku": f"#{r['number']}", "name": r["customer"] or "Pedido", "detail": r["flag"], "href": "/tienda-nube"})
 
     ordered = sorted(groups.values(), key=lambda g: (SEVERITY_ORDER[g["severity"]], -g["count"]))
     return jsonify({

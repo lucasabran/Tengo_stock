@@ -25,6 +25,27 @@
       <div class="card-desc">Descarga toda la base de datos (productos, ventas, gastos, usuarios). Conviene hacerla de vez en cuando y antes de borrar algo.</div>
       <div class="detail-actions"><a class="btn-secondary" href="/api/admin/backup">Descargar copia</a></div>
     </div>
+    <div class="card tools-card">
+      <div class="card-name">Copias automaticas</div>
+      <div class="card-desc">El sistema guarda solo una copia por dia (se conservan las ultimas 14) en el disco del servidor. Sirven para recuperarse de un error de carga o de un borrado. Para estar cubierto ante una falla del servidor, descarga una copia a tu computadora de vez en cuando.</div>
+      <div id="backups-list"></div>
+    </div>
+    <div class="card tools-card">
+      <div class="card-name">Resumen diario por mail</div>
+      <div class="card-desc">Todos los dias a las 8:00 llega un mail con las ventas de ayer, el stock bajo y los pedidos de Tienda Nube para revisar.</div>
+      <div id="summary-smtp" class="card-sku"></div>
+      <form id="summary-form">
+        <label>Mails que lo reciben (separados por coma)
+          <input id="summary-to" type="text" autocomplete="off" placeholder="nombre@tengostockarg.com.ar">
+        </label>
+        <label class="check-row"><input id="summary-enabled" type="checkbox"> Enviar el resumen todos los dias</label>
+        <div id="summary-error" class="error hidden"></div>
+        <div class="form-actions">
+          <button type="button" id="summary-test" class="btn-secondary">Enviar uno de prueba</button>
+          <button type="submit">Guardar</button>
+        </div>
+      </form>
+    </div>
     <div class="card tools-card tools-danger">
       <div class="card-name">Borrar datos de prueba</div>
       <div class="card-desc">Deja el sistema limpio para empezar a usarlo. Se hace una copia automatica antes de borrar. Los usuarios, roles y canales no se tocan.</div>

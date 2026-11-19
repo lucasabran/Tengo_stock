@@ -1,11 +1,14 @@
+import contextlib
 import os
 from datetime import datetime
 
 from flask import Flask
 
 import auth
+import jobs
+import tn_sync
 from db import close_db, init_db
-from blueprints import accounts, admin, alerts, auth_bp, bulk, channels, customers, dashboard, expenses, movements, offices, products, returns, sales
+from blueprints import accounts, admin, alerts, auth_bp, bulk, channels, customers, dashboard, expenses, movements, offices, ops, products, returns, sales, tiendanube
 
 app = Flask(__name__)
 app.teardown_appcontext(close_db)
@@ -40,6 +43,8 @@ app.register_blueprint(admin.bp)
 app.register_blueprint(bulk.bp)
 app.register_blueprint(offices.bp)
 app.register_blueprint(alerts.bp)
+app.register_blueprint(tiendanube.bp)
+app.register_blueprint(ops.bp)
 
 auth.install(app)
 
@@ -51,8 +56,12 @@ def healthcheck():
 
 
 init_db()
+with contextlib.closing(tn_sync.connect()) as _db:
+    tn_sync.ensure_schema(_db)
+    _db.commit()
 auth.seed_auth()
 app.secret_key = auth.load_secret_key()
+jobs.start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("FLASK_DEBUG") == "1")

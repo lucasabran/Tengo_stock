@@ -879,3 +879,7 @@ dialog form textarea {
 .alert-items { margin-top: 0.5rem; }
 .alert-row { text-decoration: none; color: inherit; }
 details.card > summary { cursor: pointer; }
+
+/* formularios apilados y bloques que se pueden ocultar con .hidden */
+.stack-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
+.stack-form.hidden, .form-actions.hidden { display: none; }

@@ -165,8 +165,12 @@ def reset_password(user_id):
         "UPDATE users SET password_hash = ?, must_change_password = ?, token_version = token_version + 1 WHERE id = ?",
         (generate_password_hash(temp), 0 if row["is_owner"] else 1, user_id),
     )
+    removed_2fa = False
+    if row["id"] != g.user["id"] and row["totp_enabled"]:
+        db.execute("UPDATE users SET totp_enabled = 0, totp_secret = '', totp_last = 0 WHERE id = ?", (user_id,))
+        removed_2fa = True
     db.commit()
-    auth.audit("clave_reseteada", "user", user_id, row["username"])
+    auth.audit("clave_reseteada", "user", user_id, row["username"] + (" (se quito la verificacion en dos pasos)" if removed_2fa else ""))
     return jsonify({"temp_password": temp, "same_user": row["id"] == g.user["id"]})
 
 

@@ -296,3 +296,67 @@ document.getElementById("wipe-form").addEventListener("submit", async (e) => {
     err.classList.remove("hidden");
   }
 });
+
+
+// --- Herramientas: copias automaticas y resumen diario
+(function () {
+  const J = { "Content-Type": "application/json" };
+  const list = document.getElementById("backups-list");
+  const kb = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB");
+
+  async function loadBackups() {
+    const d = await fetchJSON("/api/admin/backups");
+    list.innerHTML = d.last_error ? `<div class="error">Ultimo error: ${escapeHtml(d.last_error)}</div>` : "";
+    if (!d.backups.length) {
+      list.innerHTML += '<div class="card-sku">Todavia no hay copias. La primera se hace sola dentro de un minuto.</div>';
+      return;
+    }
+    for (const b of d.backups.slice(0, 8)) {
+      const row = document.createElement("div");
+      row.className = "list-row";
+      row.innerHTML = `<div><div class="list-row-title">${escapeHtml(b.name)}</div>
+        <div class="list-row-sub">${new Date(b.modified).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })} &middot; ${kb(b.size)}</div></div>
+        <div class="row-actions"><a class="btn-secondary" href="/api/admin/backups/${encodeURIComponent(b.name)}">Descargar</a></div>`;
+      list.appendChild(row);
+    }
+  }
+
+  const sForm = document.getElementById("summary-form");
+  const sErr = document.getElementById("summary-error");
+  async function loadSummary() {
+    const s = await fetchJSON("/api/admin/summary-settings");
+    document.getElementById("summary-to").value = s.recipients;
+    document.getElementById("summary-enabled").checked = s.enabled;
+    document.getElementById("summary-smtp").textContent = s.smtp_configured
+      ? (s.last_result ? "Ultimo envio: " + s.last_result : "Correo saliente configurado.")
+      : "Falta configurar el correo saliente en el servidor (variables SMTP_HOST, SMTP_USER y SMTP_PASSWORD en Render).";
+  }
+  sForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    sErr.classList.add("hidden");
+    try {
+      await fetchJSON("/api/admin/summary-settings", {
+        method: "PUT", headers: J,
+        body: JSON.stringify({ recipients: document.getElementById("summary-to").value, enabled: document.getElementById("summary-enabled").checked }),
+      });
+    } catch (err) {
+      sErr.textContent = errorMessage(err);
+      sErr.classList.remove("hidden");
+      return;
+    }
+    toast("Guardado", "success");
+    loadSummary();
+  });
+  document.getElementById("summary-test").addEventListener("click", async () => {
+    sErr.classList.add("hidden");
+    try {
+      const r = await fetchJSON("/api/admin/summary-send", { method: "POST", headers: J, body: "{}" });
+      toast(r.message, "success");
+    } catch (err) {
+      sErr.textContent = errorMessage(err);
+      sErr.classList.remove("hidden");
+    }
+  });
+  loadBackups();
+  loadSummary();
+})();
