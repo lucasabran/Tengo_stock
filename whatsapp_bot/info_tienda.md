@@ -55,19 +55,15 @@ Productos nuevos, originales y con garantía oficial del fabricante.
   avisá que el equipo responde el próximo día hábil.
 
 ## Promociones vigentes
+- BLACK FRIDAY: del jueves 26/11 a las 20:00 al lunes 30/11 a las 23:59. Cupones (uno por compra,
+  sobre el total del carrito): BLACK5 = 5% OFF desde $300.000 · BLACK8 = 8% OFF desde $800.000 ·
+  BLACK10 = 10% OFF desde $1.500.000. Sección con las ofertas: https://tengostockarg.com.ar/black-friday/
+  Si el carrito está cerca de un escalón, avisale cuánto le falta para el siguiente descuento.
+  Antes del 26/11 a las 20:00 o después del 30/11 los cupones BLACK no funcionan.
 - Cupón BIENVENIDA: 5% OFF en la primera compra, para compras de más de $150.000. Sin vencimiento.
-- CYBER WEEK: lunes 2 al domingo 8 de noviembre de 2026.
-  Landing: https://tengostockarg.com.ar/cyberweek/ · Todos los productos: https://tengostockarg.com.ar/cyber-week/
-  Secciones: Megaofertas (https://tengostockarg.com.ar/cyber-week/cyber-megaofertas/),
-  Novedades (.../cyber-week/cyber-novedades/), Tecno (.../cyber-week/cyber-tecno/),
-  Verano: aires y ventiladores (.../cyber-week/cyber-verano/), Electro, Cocina, Hogar y Cuidado personal.
-  Cupones (válidos del domingo 1/11 a las 20 h al domingo 8/11 a las 23:59, uno por compra):
-  - CYBER5: 5% OFF en compras de más de $300.000
-  - CYBER8: 8% OFF en compras de más de $800.000
-  - CYBER10: 10% OFF en compras de más de $1.500.000
-  Además, del 2/11 al 8/11 los productos de la sección CYBER WEEK tienen 5% OFF automático en el
-  carrito, sin código. Los cupones CYBER no se suman a otras promociones (ni al 5% automático ni a
-  productos que ya tienen precio rebajado): se aplica un solo descuento.
+- La CYBER WEEK (2 al 8 de noviembre de 2026) ya terminó: los cupones CYBER5, CYBER8 y CYBER10 y
+  el 5% automático ya no están vigentes. Si alguien pregunta, ofrecé el cupón BIENVENIDA si es su
+  primera compra.
 - Temporada: "Preparate para el verano" con aires acondicionados, ventiladores y climatizadores:
   https://tengostockarg.com.ar/verano/
 - El cupón se ingresa en el carrito, antes de pagar. Los precios de lista no cambian.

@@ -12,6 +12,7 @@ Comandos del dueño (escribiéndole al número del bot desde OWNER_PHONE):
   #pausados              lista de clientes en pausa
 """
 import collections
+import datetime
 import hashlib
 import hmac
 import json
@@ -122,8 +123,28 @@ def comando_duenio(texto):
     return "Comandos: #bot NUMERO · #pausa NUMERO · #pausados"
 
 
+AR = datetime.timezone(datetime.timedelta(hours=-3))  # Argentina no tiene horario de verano
+
+
+def horario_humano(ahora=None):
+    """True si es horario de atención de una persona (el bot no responde).
+
+    SOLO_FUERA_DE_HORARIO=1 activa el modo; HORARIO_ATENCION="9-17" (lunes a viernes) y
+    FERIADOS="08/12,25/12" (días sin atención: el bot atiende todo el día).
+    """
+    if os.environ.get("SOLO_FUERA_DE_HORARIO") != "1":
+        return False
+    ahora = ahora or datetime.datetime.now(AR)
+    if ahora.weekday() >= 5 or ahora.strftime("%d/%m") in os.environ.get("FERIADOS", "").replace(" ", "").split(","):
+        return False
+    desde, hasta = (int(h) for h in os.environ.get("HORARIO_ATENCION", "9-17").split("-"))
+    return desde <= ahora.hour < hasta
+
+
 def atender(tel, msg_id, texto, nombre):
     asistente = _bot["asistente"]
+    if horario_humano() and not (_duenio() and tel == _duenio()):
+        return  # atiende el equipo: ni siquiera se marca como leído, así queda pendiente en el celular
     try:
         # marca como leído y muestra "escribiendo…"
         _graph({"messaging_product": "whatsapp", "status": "read", "message_id": msg_id,
