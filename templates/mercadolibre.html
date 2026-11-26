@@ -1,0 +1,71 @@
+{% extends "_base.html" %}
+{% block title %}Mercado Libre{% endblock %}
+{% block content %}
+<header>
+  <h1>Mercado Libre</h1>
+  <p class="header-hint">Todas las cuentas en un solo lugar: ventas, preguntas, reclamos y mensajes. Se actualiza solo cada 5 minutos (y al instante cuando Mercado Libre avisa).</p>
+  <div class="tabs" id="ml-tabs">
+    <button type="button" class="tab active" data-tab="resumen">Resumen</button>
+    <button type="button" class="tab" data-tab="preguntas">Preguntas <span id="n-preguntas"></span></button>
+    <button type="button" class="tab" data-tab="mensajes">Mensajes <span id="n-mensajes"></span></button>
+    <button type="button" class="tab" data-tab="reclamos">Reclamos <span id="n-reclamos"></span></button>
+    <button type="button" class="tab" data-tab="ventas">Ventas</button>
+  </div>
+</header>
+
+<main>
+  <div id="ml-alert"></div>
+
+  <section data-panel="resumen">
+    <div id="accounts"></div>
+    <div class="card tools-card" id="manage-card">
+      <div class="card-name">Conectar una cuenta</div>
+      <div class="card-desc">Generá un link y abrilo en un navegador donde esté iniciada la sesión de esa cuenta de Mercado Libre (o mandáselo al titular). Al tocar <b>Permitir</b>, la cuenta aparece acá. Nadie tiene que pasar su contraseña. El link sirve una sola vez y vence en 7 días.</div>
+      <form id="link-form" class="form-actions" style="flex-wrap:wrap">
+        <input id="link-alias" placeholder="Nombre para reconocerla (ej. Cuenta Juan)" maxlength="60" style="flex:1;min-width:220px">
+        <button type="submit" class="btn-primary">Generar link</button>
+      </form>
+      <div id="link-out" class="hidden">
+        <input id="link-url" readonly style="width:100%">
+        <div class="form-actions"><button type="button" id="link-copy" class="btn-secondary">Copiar link</button></div>
+      </div>
+    </div>
+    <div class="form-actions"><button type="button" id="btn-sync" class="btn-secondary">Actualizar ahora</button></div>
+  </section>
+
+  <section data-panel="preguntas" class="hidden">
+    <select id="q-account" class="ml-select"></select>
+    <div id="questions"></div>
+    <h2 class="section-title">Respondidas desde acá (últimas 30)</h2>
+    <div id="answered"></div>
+  </section>
+
+  <section data-panel="mensajes" class="hidden">
+    <div class="card-desc">Conversaciones de posventa con mensajes sin leer. Al abrir una acá no se marca como leída en Mercado Libre; sí al responder.</div>
+    <div id="conversations"></div>
+  </section>
+
+  <section data-panel="reclamos" class="hidden">
+    <div class="card-desc">Reclamos y mediaciones abiertos, ordenados por plazo. Se responden en Mercado Libre, con la sesión de esa cuenta: <b>no dejar vencer el plazo</b> porque baja la reputación.</div>
+    <div id="claims"></div>
+  </section>
+
+  <section data-panel="ventas" class="hidden">
+    <div class="form-actions" style="justify-content:flex-start;flex-wrap:wrap">
+      <select id="o-account" class="ml-select"></select>
+      <select id="o-days" class="ml-select">
+        <option value="1">Hoy</option><option value="7" selected>Últimos 7 días</option>
+        <option value="30">Últimos 30 días</option><option value="90">Últimos 90 días</option>
+      </select>
+      <select id="o-ship" class="ml-select">
+        <option value="">Todos los envíos</option><option value="pend">Por despachar</option>
+      </select>
+    </div>
+    <div id="orders-summary" class="card tools-card"></div>
+    <div id="orders"></div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='mercadolibre.js') }}"></script>
+{% endblock %}

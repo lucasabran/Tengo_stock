@@ -894,3 +894,18 @@ details.card > summary { cursor: pointer; }
   .tools-card .form-actions > button, .tools-card .form-actions > a { flex: 1 1 8rem; }
   .list-row { flex-wrap: wrap; }
 }
+
+/* Mercado Libre multicuenta */
+.ml-select {
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+}
+[data-panel] textarea { font: inherit; font-size: 0.9rem; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; }
+#ml-tabs { flex-wrap: wrap; }
+#ml-tabs .tab { white-space: nowrap; }

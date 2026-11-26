@@ -6,9 +6,10 @@ from flask import Flask
 
 import auth
 import jobs
+import ml_multi
 import tn_sync
 from db import close_db, init_db
-from blueprints import accounts, admin, alerts, auth_bp, bulk, channels, customers, dashboard, expenses, movements, offices, ops, products, returns, sales, tiendanube
+from blueprints import accounts, admin, alerts, auth_bp, bulk, channels, customers, dashboard, expenses, mercadolibre, movements, offices, ops, products, returns, sales, tiendanube
 
 app = Flask(__name__)
 app.teardown_appcontext(close_db)
@@ -45,6 +46,7 @@ app.register_blueprint(offices.bp)
 app.register_blueprint(alerts.bp)
 app.register_blueprint(tiendanube.bp)
 app.register_blueprint(ops.bp)
+app.register_blueprint(mercadolibre.bp)
 
 auth.install(app)
 
@@ -58,6 +60,7 @@ def healthcheck():
 init_db()
 with contextlib.closing(tn_sync.connect()) as _db:
     tn_sync.ensure_schema(_db)
+    ml_multi.ensure_schema(_db)
     _db.commit()
 auth.seed_auth()
 app.secret_key = auth.load_secret_key()

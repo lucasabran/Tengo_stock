@@ -1,0 +1,11 @@
+{% extends "_base.html" %}
+{% block title %}Mercado Libre{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<main style="max-width:520px;margin:4rem auto;padding:0 16px">
+  <div class="card">
+    <div class="card-name">{{ "Cuenta conectada" if ok else "No se pudo conectar" }}</div>
+    <div class="card-desc">{{ message }}</div>
+  </div>
+</main>
+{% endblock %}

@@ -43,6 +43,9 @@ PERMISSIONS = [
     ("Configuracion", "offices.manage", "Administrar oficinas"),
     ("Configuracion", "audit.view", "Ver el registro de actividad"),
     ("Configuracion", "tiendanube.manage", "Ver y administrar la sincronizacion con Tienda Nube"),
+    ("Mercado Libre", "ml.view", "Ver ventas, preguntas, reclamos y mensajes de las cuentas de Mercado Libre"),
+    ("Mercado Libre", "ml.answer", "Responder preguntas y mensajes de Mercado Libre"),
+    ("Mercado Libre", "ml.manage", "Conectar y desconectar cuentas de Mercado Libre"),
 ]
 PERMISSION_KEYS = [p[1] for p in PERMISSIONS]
 
@@ -136,6 +139,19 @@ ENDPOINT_PERMS = {
     "tiendanube.tn_catalog_get": ("tiendanube.manage",),
     "tiendanube.tn_catalog_fetch": ("tiendanube.manage",),
     "tiendanube.tn_catalog_apply": ("tiendanube.manage",),
+    "mercadolibre.ml_page": ("ml.view",),
+    "mercadolibre.ml_overview": ("ml.view",),
+    "mercadolibre.ml_questions": ("ml.view",),
+    "mercadolibre.ml_orders": ("ml.view",),
+    "mercadolibre.ml_claims": ("ml.view",),
+    "mercadolibre.ml_messages": ("ml.view",),
+    "mercadolibre.ml_conversation": ("ml.view",),
+    "mercadolibre.ml_sync_now": ("ml.view",),
+    "mercadolibre.ml_answer": ("ml.answer",),
+    "mercadolibre.ml_reply": ("ml.answer",),
+    "mercadolibre.ml_new_link": ("ml.manage",),
+    "mercadolibre.ml_update_account": ("ml.manage",),
+    "mercadolibre.ml_delete_account": ("ml.manage",),
     "admin.audit_page": ("audit.view",),
     "admin.list_audit": ("audit.view",),
 }
@@ -153,7 +169,8 @@ LOGGED_IN_ENDPOINTS = {
     "auth.account_page", "auth.change_password", "auth.logout", "auth.me",
     "auth.twofa_status", "auth.twofa_setup", "auth.twofa_enable", "auth.twofa_disable",
 }
-PUBLIC_ENDPOINTS = {"auth.login", "auth.login_page", "auth.login_2fa_page", "auth.login_2fa", "static", "healthcheck"}
+PUBLIC_ENDPOINTS = {"auth.login", "auth.login_page", "auth.login_2fa_page", "auth.login_2fa", "static", "healthcheck",
+                    "mercadolibre.ml_callback", "mercadolibre.ml_notification"}  # las llama Mercado Libre
 
 # Orden y destino de la barra de navegacion: (clave, texto, url, permisos que la habilitan)
 NAV_ITEMS = [
@@ -168,6 +185,7 @@ NAV_ITEMS = [
     ("clientes", "Clientes", "/clientes", ("customers.view",)),
     ("cuentas", "Cuentas corrientes", "/cuentas", ("accounts.view",)),
     ("tiendanube", "Tienda Nube", "/tienda-nube", ("tiendanube.manage",)),
+    ("mercadolibre", "Mercado Libre", "/mercado-libre", ("ml.view",)),
     ("actividad", "Actividad", "/actividad", ("audit.view",)),
 ]
 

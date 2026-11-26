@@ -2,6 +2,7 @@
 
 - Sincronizar las ventas de Tienda Nube cada 10 minutos (si esta activada).
 - Copia de seguridad diaria de la base (se guardan las ultimas 14) en el disco persistente.
+- Mercado Libre multicuenta: ventas, preguntas, reclamos y mensajes cada 5 minutos (ml_multi.py).
 - Resumen diario por mail a las 8:00 (hora de Argentina), si esta configurado.
 
 Se puede apagar con la variable STOCK_DISABLE_JOBS=1 (la usan las pruebas).
@@ -15,6 +16,7 @@ from datetime import date, datetime, time as dtime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 
+import ml_multi
 import profitability
 import tn_sync
 from db import DB_PATH, now_iso
@@ -26,6 +28,7 @@ TICK_SECONDS = 60
 
 _started = False
 _last_tn_run = 0.0
+_last_ml_run = 0.0
 _last_summary_try = 0.0
 
 
@@ -266,7 +269,7 @@ def _maybe_send_summary(db):
 # Hilo principal
 # ---------------------------------------------------------------------------
 def tick():
-    global _last_tn_run
+    global _last_tn_run, _last_ml_run
     db = tn_sync.connect()
     try:
         tn_sync.ensure_schema(db)
@@ -274,6 +277,12 @@ def tick():
             if time.monotonic() - _last_tn_run >= tn_sync.SYNC_EVERY_SECONDS:
                 _last_tn_run = time.monotonic()
                 tn_sync.run_sync()
+        if ml_multi.configured() and time.monotonic() - _last_ml_run >= ml_multi.SYNC_EVERY_SECONDS:
+            _last_ml_run = time.monotonic()
+            try:
+                ml_multi.sync_all()
+            except Exception as exc:
+                print(f"[jobs] mercado libre: {exc}")
         try:
             daily_backup()
         except Exception as exc:
